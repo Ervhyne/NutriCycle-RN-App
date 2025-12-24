@@ -1,0 +1,27 @@
+// NutriCycle Official Color Palette
+export const colors = {
+  // Primary Colors
+  primary: '#1F5F2A',
+  feedGreen: '#2E7D32',
+  compostBrown: '#6D4C41',
+
+  // Backgrounds
+  creamBackground: '#FBF6C8',
+  softGreenSurface: '#E6F2E6',
+  cardWhite: '#FFFFFF',
+
+  // Text
+  primaryText: '#1F3D26',
+  mutedText: '#5F7F6A',
+
+  // Status Colors
+  warning: '#F9A825',
+  danger: '#C62828',
+  success: '#2E7D32',
+  
+  // Additional UI Colors
+  online: '#4CAF50',
+  offline: '#9E9E9E',
+  border: '#E0E0E0',
+  shadow: '#00000020',
+} as const;

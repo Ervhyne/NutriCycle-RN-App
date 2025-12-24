@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NutriCycle – Machine‑First UX (Interactive Prototype)</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#fbf6c8; --surface:#e6f2e6; --card:#ffffff;
+      --accent:#1f5f2a; --accent-soft:#d9eadb;
+      --text:#1f3d26; --muted:#5f7f6a;
+      --feed:#2e7d32; --compost:#6d4c41;
+      --danger:#c62828; --warning:#f9a825;
+      --r-xl:20px; --r-lg:16px; --r-md:12px;
+    }
+    *{box-sizing:border-box;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    body{margin:0;background:var(--bg);color:var(--text);overflow-x:hidden}
+    .app{max-width:430px;margin:auto;min-height:100vh;background:var(--bg);position:relative}
+    .hidden{display:none !important}
+
+    /* LOBBY */
+    .lobby{padding:20px;animation:fadeIn 0.3s ease-out}
+    .logo{font-size:28px;font-weight:700;text-align:center;margin-bottom:16px;color:var(--accent);letter-spacing:-0.5px}
+    .controls-row{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+    .machine-list{display:grid;gap:12px}
+    .machine-card{background:var(--card);border-radius:16px;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all 0.2s ease;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid rgba(31,95,42,0.08)}
+    .machine-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.1);border-color:rgba(31,95,42,0.15)}
+    .machine-card:focus{outline:none;box-shadow:0 0 0 3px rgba(31,95,42,0.15);border-color:var(--accent)}
+    .machine-card:active{transform:translateY(0);box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+    .mode:focus{outline:none;box-shadow:0 0 0 2px rgba(31,95,42,0.2)}
+    .machine-meta{font-size:12px;color:var(--muted);margin-top:4px}
+    .add-machine{border:2px dashed var(--accent);border-radius:16px;padding:16px;text-align:center;font-weight:600;cursor:pointer;transition:all 0.2s ease;background:rgba(31,95,42,0.02)}
+    .add-machine:hover{background:rgba(31,95,42,0.08);border-color:var(--accent);transform:translateY(-1px)}
+
+    /* MODE NAV */
+    .mode-switcher{display:grid;grid-template-columns:repeat(3,1fr);margin:16px 14px;padding:4px;background:var(--surface);border-radius:999px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.08)}
+    .mode{text-align:center;padding:12px 0;font-weight:600;font-size:13px;color:var(--muted);border-radius:999px;cursor:pointer;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);position:relative}
+    .mode:hover:not(.active){background:rgba(31,95,42,0.06);color:var(--text)}
+    .mode.active{background:var(--card);color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);transform:scale(1.02)}
+
+    .screen{display:none;padding:14px;animation:fadeIn 0.25s ease-out}
+    .screen.active{display:block}
+
+    /* MACHINE VIEW */
+    .machine-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px}
+    .machine-bar strong{font-size:18px;font-weight:700}
+    .status{font-size:12px;color:var(--muted);font-weight:500}
+    .cam{height:48vh;background:linear-gradient(135deg,#000 0%,#1a1a1a 100%);border-radius:20px;display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:12px;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.05)}
+    .cam canvas{width:100%;height:100%;display:block}
+    .cam-overlay{position:absolute;left:14px;top:14px;background:rgba(239,68,68,0.9);backdrop-filter:blur(8px);padding:6px 12px;border-radius:8px;font-weight:600;font-size:11px;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.2);animation:pulse 2s ease-in-out infinite}
+    .machine-state{background:var(--card);border-radius:16px;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid rgba(31,95,42,0.08)}
+    .machine-state > div{padding:4px}
+    .machine-state strong{display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px}
+    .controls{display:flex;justify-content:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+    .btn{padding:12px 18px;border-radius:999px;border:none;font-weight:600;cursor:pointer;transition:all 0.2s ease;box-shadow:0 2px 6px rgba(0,0,0,0.1);font-size:13px}
+    .btn:hover:not(.disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+    .btn:active:not(.disabled){transform:translateY(0);box-shadow:0 2px 6px rgba(0,0,0,0.1)}
+    .btn.start{background:var(--accent);color:#fff}
+    .btn.pause{background:var(--warning);color:#fff}
+    .btn.stop{background:var(--danger);color:#fff}
+    .btn.disabled{opacity:0.4;pointer-events:none;cursor:not-allowed}
+
+    /* PROCESS */
+    .card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid rgba(31,95,42,0.08);transition:all 0.2s ease}
+    .card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+    .card > strong{font-size:15px;font-weight:700}
+    .timeline{display:grid;gap:8px;margin-bottom:12px;font-size:12px;margin-top:12px}
+    .step{text-align:center;color:var(--muted);transition:all 0.2s ease}
+    .step small{font-size:10px;font-weight:500}
+    .circle{width:16px;height:16px;border-radius:50%;background:#e0e0e0;margin:0 auto 6px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+    .progress{height:6px;background:var(--surface);border-radius:6px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.08)}
+    .progress > i{display:block;height:100%;background:var(--feed);width:0%;transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+
+    /* DASHBOARD */
+    .metric{text-align:center;padding:20px 14px;transition:all 0.2s ease}
+    .metric h2{margin:0;font-size:36px;font-weight:700;letter-spacing:-1px}
+    .metric span{font-size:13px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.3px}
+    .chart{height:140px;background:var(--card);border-radius:16px;display:flex;align-items:flex-end;gap:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid rgba(31,95,42,0.08)}
+    .bar{flex:1;border-radius:6px 6px 0 0;color:#fff;font-size:11px;display:flex;align-items:flex-end;justify-content:center}
+    .bar.feed{background:var(--feed)}
+    .bar.compost{background:var(--compost)}
+
+    /* MODAL */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000;animation:fadeIn 0.2s ease-out}
+    .modal-card{background:var(--card);padding:20px;border-radius:20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:slideUp 0.3s ease-out}
+    .modal-card h3{margin:0 0 16px 0;font-size:20px;font-weight:700;color:var(--accent)}
+    .field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+    .field label{font-size:13px;font-weight:600;color:var(--text)}
+    input[type="text"],select{padding:12px;border-radius:10px;border:2px solid #e6e6e6;transition:all 0.2s ease;font-size:14px;background:var(--bg)}
+    input[type="text"]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,95,42,0.1)}
+
+    .meta-row{display:flex;gap:8px;align-items:center;font-size:12px}
+    .chip{padding:8px 12px;border-radius:999px;background:var(--surface);font-weight:600;cursor:pointer;transition:all 0.2s ease;font-size:12px;border:1px solid transparent}
+    .chip:hover{background:var(--accent-soft);border-color:rgba(31,95,42,0.2);transform:translateY(-1px)}
+    .chip:active{transform:translateY(0)}
+
+    /* small helpers */
+    .muted{color:var(--muted)}
+    .right{margin-left:auto}
+
+    /* ANIMATIONS */
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- MACHINE LOBBY (DEFAULT) -->
+  <div id="lobby" class="lobby" aria-live="polite">
+    <div class="logo">NutriCycle</div>
+    <div class="controls-row">
+      <div class="chip">Role: <select id="roleSelect" aria-label="Select role"><option>Operator</option><option>Admin</option></select></div>
+      <button id="addBtn" class="chip" onclick="openAddModal()">➕ Add Machine</button>
+      <button id="clearBtn" class="chip" onclick="clearMachines()">Clear</button>
+    </div>
+
+    <div id="machineList" class="machine-list" aria-label="Your machines"></div>
+
+    <div style="margin-top:10px;font-size:13px;color:var(--muted)">Tip: Use the "Add Machine" button to register a fake machine for this prototype. Machines persist in your browser.</div>
+  </div>
+
+  <!-- MAIN APP (HIDDEN UNTIL MACHINE SELECTED) -->
+  <div id="main" class="hidden" role="application">
+
+    <!-- MODE NAV -->
+    <div class="mode-switcher" role="tablist">
+      <div class="mode active" role="tab" tabindex="0" onclick="switchMode('machine',this)">Machine</div>
+      <div class="mode" role="tab" tabindex="0" onclick="switchMode('process',this)">Process</div>
+      <div class="mode" role="tab" tabindex="0" onclick="switchMode('dashboard',this)">Dashboard</div>
+    </div>
+
+    <!-- MACHINE -->
+    <div id="machine" class="screen active" role="tabpanel">
+      <div class="machine-bar">
+        <strong id="machineName">NutriCycle‑1</strong>
+        <span class="status" id="machineStatus">Connected · <span id="latency">-- ms</span></span>
+      </div>
+
+      <div class="cam" aria-label="Camera feed" id="cam">
+        <canvas id="camCanvas" width="800" height="600" aria-hidden="true"></canvas>
+        <div class="cam-overlay" id="camOverlay">Live</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <div class="chip">Mode: <span id="machineMode">Auto</span></div>
+        <div class="chip">Action: <span id="machineAction">Sorting</span></div>
+        <div class="chip right">Diverter: <span id="machineDiverter">Compost</span></div>
+      </div>
+
+      <div class="machine-state" aria-hidden="false">
+        <div><strong>Motor RPM</strong><br><span id="motorRPM">--</span></div>
+        <div><strong>Temp</strong><br><span id="temp">-- °C</span></div>
+        <div><strong>Humidity</strong><br><span id="humidity">-- %</span></div>
+        <div><strong>Latency</strong><br><span id="latencyBox">-- ms</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" class="btn start">Start</button>
+        <button id="pauseBtn" class="btn pause">Pause</button>
+        <button id="stopBtn" class="btn stop">Emergency Stop</button>
+        <button id="snapBtn" class="btn" onclick="takeSnapshot()">Snapshot</button>
+      </div>
+
+      <div style="margin-top:10px;font-size:12px;color:var(--muted)">Status log: <span id="statusLog">Idle</span></div>
+    </div>
+
+    <!-- PROCESS -->
+    <div id="process" class="screen" role="tabpanel">
+      <div class="card">
+        <strong>Animal Feed Process</strong>
+        <div style="height:8px;margin:10px 0" class="progress" aria-hidden="true"><i id="feedProgress"></i></div>
+        <div class="timeline" id="feedTimeline" style="grid-template-columns:repeat(5,1fr)">
+          <div class="step"><div class="circle" style="background:var(--feed)"></div><small>Recognition</small></div>
+          <div class="step"><div class="circle" style="background:var(--feed)"></div><small>Sorting</small></div>
+          <div class="step"><div class="circle" style="background:var(--warning)"></div><small>Grinding</small></div>
+          <div class="step"><div class="circle"></div><small>Dehydration</small></div>
+          <div class="step"><div class="circle"></div><small>Completion</small></div>
+        </div>
+        <small id="feedStepInfo">Step 1 of 5 · Batch NC‑F‑014</small>
+      </div>
+
+      <div class="card">
+        <strong>Compost Process</strong>
+        <div style="height:8px;margin:10px 0" class="progress" aria-hidden="true"><i id="compostProgress" style="background:var(--compost)"></i></div>
+        <div class="timeline" id="compostTimeline" style="grid-template-columns:repeat(4,1fr)">
+          <div class="step"><div class="circle" style="background:var(--compost)"></div><small>Recognition</small></div>
+          <div class="step"><div class="circle" style="background:var(--compost)"></div><small>Sorting</small></div>
+          <div class="step"><div class="circle" style="background:var(--warning)"></div><small>Vermicasting</small></div>
+          <div class="step"><div class="circle"></div><small>Completion</small></div>
+        </div>
+        <small id="compostStepInfo">Step 1 of 4 · Batch NC‑C‑009</small>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="screen" role="tabpanel">
+      <div class="card metric">
+        <h2 id="feedTotal" style="color:var(--feed)">— kg</h2>
+        <span>Animal Feed Produced</span>
+      </div>
+      <div class="card metric">
+        <h2 id="compostTotal" style="color:var(--compost)">— kg</h2>
+        <span>Compost Generated</span>
+      </div>
+      <div class="card">
+        <strong>Feed vs Compost (last 7 days)</strong><br><br>
+        <canvas id="dashChart" width="400" height="120" aria-label="Feed vs Compost chart"></canvas>
+      </div>
+    </div>
+
+    <div style="padding:12px;text-align:center;font-size:12px;color:var(--muted)">
+      <button class="chip" onclick="backToLobby()">← Switch Machine</button>
+    </div>
+
+  </div>
+
+  <!-- ADD MACHINE MODAL -->
+  <div id="addModal" class="modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h3>Add Machine</h3>
+      <div class="field">
+        <label for="mName">Machine name</label>
+        <input id="mName" type="text" placeholder="NutriCycle-1">
+      </div>
+      <div class="field">
+        <label for="mId">Machine ID</label>
+        <input id="mId" type="text" placeholder="NC-XXXX-00">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeAddModal()" class="chip">Cancel</button>
+        <button onclick="confirmAddMachine()" class="chip" style="background:var(--accent);color:#fff">Add</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ------------------------------
+// Simple interactive prototype
+// - Machines persist to localStorage
+// - Simulated camera (canvas animation)
+// - Telemetry & process simulation
+// - Role-based control restrictions
+// - Simple dash chart drawn on canvas
+// ------------------------------
+
+const STORAGE_KEY = 'nutricycle_machines_v1';
+let machines = [];
+let currentId = null;
+let telemetryTimer = null;
+let cameraAnim = null;
+let role = 'Operator';
+
+// Boot
+init();
+
+function init(){
+  document.getElementById('roleSelect').addEventListener('change',(e)=>{ role = e.target.value; applyRole(); });
+  document.getElementById('addBtn').addEventListener('click', openAddModal);
+  document.getElementById('clearBtn').addEventListener('click', ()=>{ if(confirm('Clear stored machines?')){ localStorage.removeItem(STORAGE_KEY); machines=[]; renderLobby(); } });
+  document.getElementById('startBtn').addEventListener('click', ()=>controlAction('start'));
+  document.getElementById('pauseBtn').addEventListener('click', ()=>controlAction('pause'));
+  document.getElementById('stopBtn').addEventListener('click', ()=>controlAction('stop'));
+  // allow keyboard on mode tabs
+  document.querySelectorAll('.mode').forEach(m=> m.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); m.click(); } }));
+  loadMachines();
+  renderLobby();
+  drawDashChart();
+}
+
+// MODE SWITCHING
+function switchMode(id, el){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.mode').forEach(m=>m.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// STORAGE
+function loadMachines(){
+  try{ machines = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }catch(e){ machines = []; }
+  if(machines.length===0){ // seed example
+    machines.push({id: 'NC-8F2A-91', name:'NutriCycle-1', online:true, telemetry:{rpm:1200,temp:55,hum:32,latency:120}, process:{feedStep:1,compostStep:1}, totals:{feed:1.2,compost:0.9}, created:Date.now()});
+    saveMachines();
+  }
+}
+function saveMachines(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(machines)); }
+
+// LOBBY UI
+function renderLobby(){
+  const list = document.getElementById('machineList'); list.innerHTML='';
+  machines.forEach(m=>{
+    const el = document.createElement('div'); el.className='machine-card'; el.tabIndex=0;
+    el.setAttribute('role','button'); el.setAttribute('aria-pressed','false');
+    el.innerHTML=`<div><strong>${escapeHtml(m.name)}</strong><div class="machine-meta">ID: ${escapeHtml(m.id)} · ${m.online? 'Online':'Offline'}</div></div><div style="text-align:right"><button onclick="toggleOnline('${m.id}');event.stopPropagation()" class="chip">${m.online?'Take Offline':'Bring Online'}</button><div style="height:6px"></div><button onclick="selectMachine('${m.id}');event.stopPropagation()" class="chip">Open</button></div>`;
+    // click & key handlers for accessibility
+    el.addEventListener('click', ()=>selectMachine(m.id));
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectMachine(m.id); } });
+    list.appendChild(el);
+  });
+}
+
+function openAddModal(){ document.getElementById('addModal').style.display='flex'; document.getElementById('mName').value=''; document.getElementById('mId').value=generateId(); document.getElementById('mName').focus(); }
+function closeAddModal(){ document.getElementById('addModal').style.display='none'; }
+function confirmAddMachine(){ const name = document.getElementById('mName').value.trim() || 'NutriCycle'; const id = document.getElementById('mId').value.trim() || generateId(); if(machines.some(x=>x.id===id)){ alert('Machine ID already exists'); return; } machines.push({id, name, online:true, telemetry:{rpm:0,temp:20,hum:40,latency:50}, process:{feedStep:1,compostStep:1}, totals:{feed:0,compost:0}, created:Date.now()}); saveMachines(); renderLobby(); closeAddModal(); }
+function generateId(){ return 'NC-'+Math.random().toString(36).substring(2,7).toUpperCase()+'-'+Math.floor(Math.random()*90+10); }
+function toggleOnline(id){ const m = machines.find(x=>x.id===id); if(!m) return; m.online = !m.online; saveMachines(); renderLobby(); if(currentId===id){ updateOnlineUI(m); } }
+
+// SELECT / SWITCH MACHINE
+function selectMachine(id){
+  currentId = id || machines[0] && machines[0].id;
+  if(!currentId) return;
+  const m = machines.find(x=>x.id===currentId);
+  if(!m) return;
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('main').classList.remove('hidden');
+  document.getElementById('machineName').textContent = `${m.name}`;
+  applyRole();
+  startTelemetryLoop();
+  startCamera();
+  updateUIFromMachine(m);
+}
+function backToLobby(){ stopTelemetryLoop(); stopCamera(); document.getElementById('main').classList.add('hidden'); document.getElementById('lobby').style.display='block'; currentId=null; }
+
+// UI UPDATES
+function updateUIFromMachine(m){
+  document.getElementById('machineStatus').textContent = (m.online?'Connected':'Offline') + ' · ' + (m.telemetry.latency || '--') + ' ms';
+  document.getElementById('latency').textContent = m.telemetry.latency + ' ms';
+  document.getElementById('latencyBox').textContent = m.telemetry.latency + ' ms';
+  document.getElementById('motorRPM').textContent = m.telemetry.rpm + ' rpm';
+  document.getElementById('temp').textContent = m.telemetry.temp + ' °C';
+  document.getElementById('humidity').textContent = m.telemetry.hum + ' %';
+  document.getElementById('feedTotal').textContent = m.totals.feed.toFixed(2) + ' kg';
+  document.getElementById('compostTotal').textContent = m.totals.compost.toFixed(2) + ' kg';
+  // overlay camera state with color coding
+  const overlay = document.getElementById('camOverlay');
+  const state = m._state || 'live';
+  overlay.textContent = state.toUpperCase();
+  overlay.style.background = state === 'running' ? 'rgba(46,125,50,0.9)' : 
+                             state === 'paused' ? 'rgba(249,168,37,0.9)' : 
+                             state === 'stopped' ? 'rgba(198,40,40,0.9)' : 
+                             'rgba(239,68,68,0.9)';
+  document.getElementById('feedStepInfo').textContent = `Step ${m.process.feedStep} of 5 · Batch NC-F-${(Math.floor(Math.random()*900)+100)}`;
+  document.getElementById('compostStepInfo').textContent = `Step ${m.process.compostStep} of 4 · Batch NC-C-${(Math.floor(Math.random()*900)+100)}`;
+  document.getElementById('feedProgress').style.width = Math.min(100, (m.process.feedStep-1)/4*100)+'%';
+  document.getElementById('compostProgress').style.width = Math.min(100, (m.process.compostStep-1)/3*100)+'%';
+  updateTimelines(m);
+}
+
+function updateOnlineUI(m){ const st = document.getElementById('machineStatus'); st.textContent = (m.online?'Connected':'Offline') + ' · ' + (m.telemetry.latency || '--') + ' ms'; if(!m.online){ st.style.color = 'var(--muted)'; } else { st.style.color=''; } }
+
+// ROLE CONTROL
+function applyRole(){ const r = document.getElementById('roleSelect').value;
+  if(r==='Operator'){
+    document.getElementById('stopBtn').classList.add('disabled');
+  } else {
+    document.getElementById('stopBtn').classList.remove('disabled');
+  }
+}
+
+// CONTROL ACTIONS (simulated)
+function controlAction(cmd){ const m = machines.find(x=>x.id===currentId); if(!m) return; if(!m.online){ logStatus('❌ Machine is offline'); return; } if(cmd==='stop' && document.getElementById('stopBtn').classList.contains('disabled')){ logStatus('🚫 Permission denied (stop)'); return; }
+  logStatus(`✓ Sent: ${cmd.toUpperCase()}`);
+  // simulate effect and set visible state
+  if(cmd==='start'){ m.process.feedStep = Math.max(1, m.process.feedStep); m._state = 'running'; }
+  if(cmd==='pause'){ m._state = 'paused'; }
+  if(cmd==='stop'){ m.process.feedStep = 1; m._state = 'stopped'; }
+  saveMachines(); updateUIFromMachine(m);
+}
+
+function logStatus(text){ document.getElementById('statusLog').textContent = text; }
+
+// TELEMETRY & PROCESS SIMULATION
+function startTelemetryLoop(){ stopTelemetryLoop(); telemetryTimer = setInterval(()=>{ const m = machines.find(x=>x.id===currentId); if(!m) return;
+  // simulate telemetry changes
+  if(m.online){ m.telemetry.rpm = Math.round(1000 + Math.random()*800);
+    m.telemetry.temp = Math.round(45 + Math.random()*15);
+    m.telemetry.hum = Math.round(25 + Math.random()*30);
+    m.telemetry.latency = Math.round(40 + Math.random()*200);
+    // process step progression
+    if(Math.random()<0.25){ m.process.feedStep = Math.min(5, m.process.feedStep+1); if(m.process.feedStep===5) m.totals.feed += Math.random()*0.3; }
+    if(Math.random()<0.15){ m.process.compostStep = Math.min(4, m.process.compostStep+1); if(m.process.compostStep===4) m.totals.compost += Math.random()*0.25; }
+    saveMachines(); updateUIFromMachine(m);
+    logStatus('📡 Telemetry updated');
+  } else {
+    logStatus('⚠️ Machine offline');
+  }
+  drawDashChart(); }, 2000);
+}
+function stopTelemetryLoop(){ if(telemetryTimer) clearInterval(telemetryTimer); telemetryTimer=null; }
+
+// CAMERA SIMULATION (canvas animation)
+function startCamera(){ stopCamera(); const canvas = document.getElementById('camCanvas'); const ctx = canvas.getContext('2d'); let t=0;
+  canvas.width = canvas.clientWidth*devicePixelRatio;
+  canvas.height = canvas.clientHeight*devicePixelRatio;
+  // reset transforms for crisp rendering
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  cameraAnim = setInterval(()=>{ t+=0.03; // animate
+    // background gradient moving
+    const w = canvas.clientWidth; const h = canvas.clientHeight;
+    const grd = ctx.createLinearGradient(0,0,w,0);
+    grd.addColorStop(0, '#153f2a');
+    grd.addColorStop(0.5, '#2e7d32');
+    grd.addColorStop(1, '#6d4c41');
+    ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
+    // moving circles to simulate objects
+    for(let i=0;i<6;i++){ const x = (Math.sin(t*(0.5+i*0.3)+(i))*0.5+0.5)*(w-40)+20; const y = (0.2+i*0.12)*h + Math.sin(t*(0.3+i))*10; ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.arc(x,y,18,0,Math.PI*2); ctx.fill(); }
+    // overlay text
+    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.font='14px Inter, sans-serif'; ctx.fillText('LIVE CAMERA — ' + new Date().toLocaleTimeString(), 10, 20);
+  }, 1000/24);
+}
+function stopCamera(){ if(cameraAnim) clearInterval(cameraAnim); cameraAnim=null; }
+function takeSnapshot(){ const canvas = document.getElementById('camCanvas'); const data = canvas.toDataURL('image/png'); const a = document.createElement('a'); a.href=data; a.download = (machines.find(m=>m.id===currentId)?.id||'snapshot') + '_' + Date.now() + '.png'; a.click(); }
+
+// DASHBOARD (improved canvas chart)
+function drawDashChart(){ const canvas = document.getElementById('dashChart'); const ctx = canvas.getContext('2d'); const m = machines.find(x=>x.id===currentId) || machines[0]; if(!m){ ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+  // make canvas DPI-aware
+  const DPR = devicePixelRatio || 1;
+  canvas.width = Math.floor(canvas.clientWidth * DPR);
+  canvas.height = Math.floor(canvas.clientHeight * DPR);
+  // reset transforms to avoid cumulative scaling when called repeatedly
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  const w = canvas.clientWidth; const h = canvas.clientHeight; const pad = 28;
+  // simulate sample data for 7 days
+  const feed = []; const compost = [];
+  for(let i=0;i<7;i++){ feed.push(Math.max(0.01, m.totals.feed*0.7 + Math.random()*0.8)); compost.push(Math.max(0.01, m.totals.compost*0.7 + Math.random()*0.6)); }
+
+  // clear
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // axis
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = '11px Inter, sans-serif'; ctx.fillText('Days →', w - pad - 30, h - 6);
+  ctx.save(); ctx.translate(pad-10, h/2); ctx.rotate(-Math.PI/2); ctx.fillText('Output (kg)', 0, 0); ctx.restore();
+
+  const maxV = Math.max(...feed, ...compost, 1);
+  const barW = (w - pad*2) / (feed.length*2);
+  for(let i=0;i<feed.length;i++){
+    const x = pad + i*barW*2;
+    const fh = (feed[i]/maxV) * (h - pad*2);
+    const ch = (compost[i]/maxV) * (h - pad*2);
+    // feed
+    ctx.fillStyle = '#2e7d32'; ctx.fillRect(x, h - pad - fh, barW - 6, fh);
+    ctx.fillStyle = '#6d4c41'; ctx.fillRect(x + barW, h - pad - ch, barW - 6, ch);
+    // labels
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font='10px Inter, sans-serif'; ctx.fillText((i+1), x+2, h - pad + 12);
+  }
+
+  // legend
+  ctx.fillStyle = '#2e7d32'; ctx.fillRect(w - pad - 110, 8, 12, 12); ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillText('Feed', w - pad - 90, 18);
+  ctx.fillStyle = '#6d4c41'; ctx.fillRect(w - pad - 110, 28, 12, 12); ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillText('Compost', w - pad - 90, 38);
+
+  // summary KPIs
+  document.getElementById('feedTotal').textContent = m.totals.feed.toFixed(2)+' kg';
+  document.getElementById('compostTotal').textContent = m.totals.compost.toFixed(2)+' kg';
+}
+
+function updateTimelines(m){
+  // Highlight feed steps with smooth animation
+  const feedSteps = document.querySelectorAll('#feedTimeline .step .circle');
+  feedSteps.forEach((c, idx) => {
+    if(idx < m.process.feedStep){
+      c.style.background = (idx+1 === m.process.feedStep) ? 'var(--warning)' : 'var(--feed)';
+      c.style.transform = 'scale(1.1)';
+      c.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+    } else { 
+      c.style.background = '#e0e0e0'; 
+      c.style.transform = 'scale(1)';
+      c.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    }
+  });
+  // Highlight compost steps with smooth animation
+  const compostSteps = document.querySelectorAll('#compostTimeline .step .circle');
+  compostSteps.forEach((c, idx) => {
+    if(idx < m.process.compostStep){
+      c.style.background = (idx+1 === m.process.compostStep) ? 'var(--warning)' : 'var(--compost)';
+      c.style.transform = 'scale(1.1)';
+      c.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+    } else { 
+      c.style.background = '#e0e0e0'; 
+      c.style.transform = 'scale(1)';
+      c.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    }
+  });
+}
+
+// UTILS
+// Escape HTML (safe)
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+
+
+// clear store
+function clearMachines(){ if(confirm('Remove all machines from storage?')){ localStorage.removeItem(STORAGE_KEY); machines=[]; renderLobby(); }}
+
+// window unload save
+window.addEventListener('beforeunload', ()=>{ saveMachines(); stopTelemetryLoop(); stopCamera(); });
+
+</script>
+</body>
+</html>
