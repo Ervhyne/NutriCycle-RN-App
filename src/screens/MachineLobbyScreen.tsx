@@ -1,4 +1,5 @@
 import React from 'react';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -7,17 +8,18 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { PlusCircle, Server, Wifi, WifiOff } from 'lucide-react-native';
+import { PlusCircle, Server, Wifi, WifiOff, Camera } from 'lucide-react-native';
 import { useMachineStore } from '../stores/machineStore';
 import { Machine } from '../types';
 import { colors } from '../theme/colors';
 
 export default function MachineLobbyScreen({ navigation }: any) {
   const { machines, selectMachine } = useMachineStore();
+  const insets = useSafeAreaInsets();
 
   const handleSelectMachine = (machine: Machine) => {
     selectMachine(machine);
-    navigation.navigate('Main');
+    navigation.navigate('Dashboard');
   };
 
   const handleAddMachine = () => {
@@ -46,24 +48,27 @@ export default function MachineLobbyScreen({ navigation }: any) {
         {item.isOnline ? (
           <>
             <Wifi size={20} color={colors.online} />
-            <Text style={[styles.statusText, { color: colors.online }]}>
-              Online
-            </Text>
+            <Text style={[styles.statusText, { color: colors.online }]}>Online</Text>
           </>
         ) : (
           <>
             <WifiOff size={20} color={colors.offline} />
-            <Text style={[styles.statusText, { color: colors.offline }]}>
-              Offline
-            </Text>
+            <Text style={[styles.statusText, { color: colors.offline }]}>Offline</Text>
           </>
         )}
+
+        {item.streamUrl ? (
+          <View style={{ marginTop: 6, alignItems: 'center' }}>
+            <Camera size={16} color={colors.primary} />
+            <Text style={[styles.statusText, { color: colors.primary, fontSize: 10 }]}>Camera</Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}> 
       <StatusBar barStyle="dark-content" backgroundColor={colors.creamBackground} />
       
       {/* Header */}
@@ -77,30 +82,28 @@ export default function MachineLobbyScreen({ navigation }: any) {
         <View style={styles.emptyState}>
           <Server size={64} color={colors.mutedText} />
           <Text style={styles.emptyTitle}>No Machines</Text>
-          <Text style={styles.emptyText}>
-            Add your first NutriCycle machine to get started
-          </Text>
+          <Text style={styles.emptyText}>Add your first NutriCycle machine to get started</Text>
         </View>
       ) : (
         <FlatList
           data={machines}
           renderItem={renderMachineCard}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 24 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
         />
       )}
 
       {/* Add Machine FAB */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: 24 + insets.bottom }]}
         onPress={handleAddMachine}
         activeOpacity={0.8}
       >
         <PlusCircle size={24} color={colors.cardWhite} />
         <Text style={styles.fabText}>Add Machine</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -111,7 +114,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 24,
   },
   title: {
@@ -126,7 +129,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 100,
   },
   machineCard: {
     flexDirection: 'row',
@@ -166,7 +168,6 @@ const styles = StyleSheet.create({
   },
   statusContainer: {
     alignItems: 'center',
-    gap: 4,
   },
   statusText: {
     fontSize: 12,
@@ -192,7 +193,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
     right: 24,
     flexDirection: 'row',
     alignItems: 'center',

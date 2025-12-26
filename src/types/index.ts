@@ -7,17 +7,18 @@ export interface Machine {
   lastSeen?: Date;
   connectionStrength?: number; // 0-100
   imageUrl?: string;
+  streamUrl?: string; // optional HLS/HTTP stream (m3u8, http/https)
 }
 
 // Process Types
-export type ProcessType = 'feed' | 'compost';
-export type ProcessStep = 1 | 2 | 3 | 4 | 5;
+export type ProcessType = 'feed' | 'compost' | 'mixed';
+export type ProcessStep = number;
 
 export interface Batch {
   id: string;
   machineId: string;
   type: ProcessType;
-  status: 'queued' | 'running' | 'completed' | 'error';
+  status: 'queued' | 'running' | 'paused' | 'completed' | 'error';
   currentStep: ProcessStep;
   startTime?: Date;
   endTime?: Date;

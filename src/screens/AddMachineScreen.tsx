@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -17,6 +18,7 @@ export default function AddMachineScreen({ navigation }: any) {
   const [machineId, setMachineId] = useState('');
   const [machineName, setMachineName] = useState('');
   const { addMachine } = useMachineStore();
+  const insets = useSafeAreaInsets();
 
   const handleAddMachine = () => {
     if (!machineId.trim()) {
@@ -49,15 +51,13 @@ export default function AddMachineScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
+    <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <Text style={styles.title}>Add Machine</Text>
-        <Text style={styles.subtitle}>
-          Enter machine details or scan the QR code on your NutriCycle device
-        </Text>
+        <Text style={styles.subtitle}>Enter machine details or scan the QR code on your NutriCycle device</Text>
 
         {/* Machine Name Input */}
         <View style={styles.inputContainer}>
@@ -99,7 +99,7 @@ export default function AddMachineScreen({ navigation }: any) {
 
         {/* Add Button */}
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { marginBottom: 16 + insets.bottom }]}
           onPress={handleAddMachine}
           activeOpacity={0.8}
         >
@@ -114,8 +114,8 @@ export default function AddMachineScreen({ navigation }: any) {
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 24,
   },
   title: {
     fontSize: 32,
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: colors.mutedText,
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 22,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.softGreenSurface,
     padding: 16,
     borderRadius: 12,
-    marginBottom: 32,
+    marginBottom: 16,
     gap: 8,
   },
   scanText: {
@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 12,
   },
   addButtonText: {
     color: colors.cardWhite,
