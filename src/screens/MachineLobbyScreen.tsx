@@ -90,11 +90,11 @@ export default function MachineLobbyScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}> 
-      <StatusBar barStyle="dark-content" backgroundColor={colors.pageBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.creamBackground} />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>NutriCycle</Text>
+        <Text style={styles.title}>Machines</Text>
         <Text style={styles.subtitle}>Select a machine to continue</Text>
       </View>
 
@@ -135,7 +135,7 @@ export default function MachineLobbyScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.pageBackground,
+    backgroundColor: colors.creamBackground,
   },
   header: {
     paddingHorizontal: 24,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   machineCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardBackground,
+    backgroundColor: colors.cardWhite,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,

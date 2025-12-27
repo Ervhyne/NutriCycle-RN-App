@@ -53,7 +53,7 @@ export default function MachineScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.pageBackground,
+    backgroundColor: colors.creamBackground,
   },
   scrollContent: {
     paddingBottom: 24,

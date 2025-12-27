@@ -23,7 +23,7 @@ export default function BatchSessionScreen({ navigation, route }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.pageBackground },
+  container: { flex: 1, backgroundColor: colors.creamBackground },
   header: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, backgroundColor: colors.cardWhite, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { paddingVertical: 8, paddingHorizontal: 12 },
   backText: { color: colors.primary, fontWeight: '700' },

@@ -308,7 +308,7 @@ export const SignUpScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.pageBackground,
+    backgroundColor: colors.creamBackground,
   },
   keyboardView: {
     flex: 1,
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxHeight: '85%',
-    backgroundColor: colors.cardBackground,
+    backgroundColor: colors.creamBackground,
     borderRadius: 16,
     padding: 20,
   },

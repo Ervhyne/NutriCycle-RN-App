@@ -6,10 +6,7 @@ export const colors = {
   compostBrown: '#6D4C41',
 
   // Backgrounds
-  // Page background (main app background - neutral white)
-  pageBackground: '#F8F8F8',
-  // Card / highlight background (used for cards & subtle highlights)
-  cardBackground: '#FBF6C8',
+  creamBackground: '#FBF6C8',
   softGreenSurface: '#E6F2E6',
   cardWhite: '#FFFFFF',
 
