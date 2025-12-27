@@ -11,7 +11,7 @@ export const colors = {
   cardWhite: '#FFFFFF',
 
   // Text
-  primaryText: '#1F3D26',
+  primaryText: '#1F5F2A',
   mutedText: '#5F7F6A',
 
   // Status Colors
@@ -26,6 +26,6 @@ export const colors = {
   shadow: '#00000020',
 
   // Bottom Navigation Colors
-  navActive: '#F9835C', // selected color (from design)
+  navActive: '#1F5F2A', // selected color (from design)
   navInactive: '#A9A9A9', // inactive icon color
 } as const;

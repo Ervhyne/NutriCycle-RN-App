@@ -8,6 +8,7 @@ export const NAV_HEIGHT = 72;
 
 type Props = {
   onTabPress?: (key: string) => void;
+  selectedTab?: string;
 };
 
 const TABS = [
@@ -17,9 +18,9 @@ const TABS = [
   { key: 'Settings', label: 'Settings', Icon: Settings },
 ];
 
-export default function BottomNavigation({ onTabPress }: Props) {
+export default function BottomNavigation({ onTabPress, selectedTab = 'Machines' }: Props) {
   const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState<string>('Machines');
+  const [selected, setSelected] = useState<string>(selectedTab);
 
   const iconScales = useRef<Record<string, Animated.Value>>(
     TABS.reduce<Record<string, Animated.Value>>((acc, t) => {
