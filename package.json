@@ -9,6 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-firebase/app": "^23.7.0",
+    "@react-native-firebase/auth": "^23.7.0",
     "@react-navigation/bottom-tabs": "^7.9.0",
     "@react-navigation/material-top-tabs": "^7.4.11",
     "@react-navigation/native": "^7.1.26",
@@ -18,8 +20,10 @@
     "expo": "~54.0.30",
     "expo-audio": "~1.1.1",
     "expo-av": "~16.0.8",
+    "expo-font": "^14.0.10",
     "expo-status-bar": "~3.0.9",
     "expo-video": "~3.0.15",
+    "firebase": "^12.7.0",
     "lucide-react-native": "^0.562.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
