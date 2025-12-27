@@ -24,4 +24,8 @@ export const colors = {
   offline: '#9E9E9E',
   border: '#E0E0E0',
   shadow: '#00000020',
+
+  // Bottom Navigation Colors
+  navActive: '#1F5F2A', // active icon color
+  navInactive: '#A9A9A9', // inactive icon color
 } as const;
