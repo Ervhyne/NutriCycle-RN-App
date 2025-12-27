@@ -6,7 +6,10 @@ export const colors = {
   compostBrown: '#6D4C41',
 
   // Backgrounds
-  creamBackground: '#FBF6C8',
+  // Page background (main app background - neutral white)
+  pageBackground: '#F8F8F8',
+  // Card / highlight background (used for cards & subtle highlights)
+  cardBackground: '#FBF6C8',
   softGreenSurface: '#E6F2E6',
   cardWhite: '#FFFFFF',
 
@@ -26,6 +29,6 @@ export const colors = {
   shadow: '#00000020',
 
   // Bottom Navigation Colors
-  navActive: '#1F5F2A', // active icon color
+  navActive: '#F9835C', // selected color (from design)
   navInactive: '#A9A9A9', // inactive icon color
 } as const;

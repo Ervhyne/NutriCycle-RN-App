@@ -26,7 +26,7 @@ export default function DashboardScreen({ navigation }: any) {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 8 + insets.top, paddingBottom: 80 + insets.bottom }}>
         <View style={[styles.headerRow, { paddingTop: insets.top }] }>
           <Text style={styles.title}>Dashboard</Text>
-          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Lobby')}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Machines')}>
             <Text style={styles.headerButtonText}>Machines</Text>
           </TouchableOpacity>
         </View>
@@ -90,7 +90,7 @@ export default function DashboardScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.creamBackground },
+  container: { flex: 1, backgroundColor: colors.pageBackground },
   title: { fontSize: 24, fontWeight: '700', color: colors.primary, marginLeft: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primaryText, marginTop: 8, marginLeft: 8 },
   chart: { borderRadius: 12, marginTop: 8, backgroundColor: colors.cardWhite, padding: 8 },

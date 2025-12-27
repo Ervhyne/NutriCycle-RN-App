@@ -69,7 +69,7 @@ export default function NewBatchScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.creamBackground },
+  container: { flex: 1, backgroundColor: colors.pageBackground },
   content: { padding: 20, paddingTop: 24 },
   title: { fontSize: 28, fontWeight: '700', color: colors.primary, marginBottom: 12 },
   subtitle: { color: colors.mutedText, marginBottom: 12 },

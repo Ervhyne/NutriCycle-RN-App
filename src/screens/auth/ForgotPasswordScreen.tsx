@@ -208,7 +208,7 @@ export const ForgotPasswordScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.creamBackground,
+    backgroundColor: colors.pageBackground,
   },
   keyboardView: {
     flex: 1,
