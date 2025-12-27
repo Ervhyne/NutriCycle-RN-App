@@ -6,48 +6,25 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Pressable,
   StatusBar,
-  Animated,
   Platform,
 } from 'react-native';
-import { Plus, Server, Wifi, WifiOff, Camera, BarChart, Clock, Settings } from 'lucide-react-native';
+import { Plus, Server, Wifi, WifiOff, Camera } from 'lucide-react-native';
 import { useMachineStore } from '../stores/machineStore';
 import { Machine } from '../types';
 import { colors } from '../theme/colors';
+import BottomNavigation, { NAV_HEIGHT } from '../components/BottomNavigation';
 
-const NAV_HEIGHT = 72; // visual height of the nav (without safe area)
+
 
 export default function MachineLobbyScreen({ navigation }: any) {
   const { machines, selectMachine } = useMachineStore();
   const insets = useSafeAreaInsets();
 
-  const [selected, setSelected] = useState<string>('Machines');
 
-  const TABS = [
-    { key: 'Machines', label: 'Machines', Icon: Server },
-    { key: 'Reports', label: 'Reports', Icon: BarChart },
-    { key: 'History', label: 'History', Icon: Clock },
-    { key: 'Settings', label: 'Settings', Icon: Settings },
-  ];
 
-  // Animated values for icon scale
-  const iconScales = useRef<Record<string, Animated.Value>>(
-    TABS.reduce<Record<string, Animated.Value>>((acc, t) => {
-      acc[t.key] = new Animated.Value(t.key === selected ? 1.15 : 1);
-      return acc;
-    }, {})
-  ).current;
 
-  // Entrance animation for the nav
-  const barTranslateY = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    Animated.timing(barTranslateY, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [barTranslateY]);
 
   const handleSelectMachine = (machine: Machine) => {
     selectMachine(machine);
@@ -58,70 +35,62 @@ export default function MachineLobbyScreen({ navigation }: any) {
     navigation.navigate('AddMachine');
   };
 
-  const onPressTab = (tabKey: string) => {
-    if (tabKey === selected) return;
 
-    // animate icon scales
-    Animated.parallel([
-      Animated.spring(iconScales[tabKey], { toValue: 1.15, useNativeDriver: true }),
-      Animated.spring(iconScales[selected], { toValue: 1, useNativeDriver: true }),
-    ]).start();
 
-    setSelected(tabKey);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-    // Navigate to screen matching the tab key if available
-    try {
-      navigation.navigate(tabKey);
-    } catch (e) {
-      // Fallback: navigate to root or do nothing
-      console.warn(`Navigation target '${tabKey}' may not exist.`);
-    }
+  const renderMachineCard = ({ item }: { item: Machine }) => {
+    const isHovered = hoveredId === item.id;
+
+    return (
+      <Pressable
+        onPress={() => handleSelectMachine(item)}
+        onHoverIn={() => Platform.OS === 'web' && setHoveredId(item.id)}
+        onHoverOut={() => Platform.OS === 'web' && setHoveredId(null)}
+        style={[
+          styles.machineCard,
+          isHovered && styles.machineCardHover,
+        ]}
+      >
+        {/* Machine Avatar */}
+        <View style={styles.machineAvatar}>
+          <Server size={32} color={colors.primary} />
+        </View>
+
+        {/* Machine Info */}
+        <View style={styles.machineInfo}>
+          <Text style={styles.machineName}>{item.name}</Text>
+          <Text style={styles.machineId}>{item.machineId}</Text>
+        </View>
+
+        {/* Status Indicator */}
+        <View style={styles.statusContainer}>
+          {item.isOnline ? (
+            <>
+              <Wifi size={20} color={colors.online} />
+              <Text style={[styles.statusText, { color: colors.online }]}>Online</Text>
+            </>
+          ) : (
+            <>
+              <WifiOff size={20} color={colors.offline} />
+              <Text style={[styles.statusText, { color: colors.offline }]}>Offline</Text>
+            </>
+          )}
+
+          {item.streamUrl ? (
+            <View style={{ marginTop: 6, alignItems: 'center' }}>
+              <Camera size={16} color={colors.primary} />
+              <Text style={[styles.statusText, { color: colors.primary, fontSize: 10 }]}>Camera</Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+    );
   };
-
-  const renderMachineCard = ({ item }: { item: Machine }) => (
-    <TouchableOpacity
-      style={styles.machineCard}
-      onPress={() => handleSelectMachine(item)}
-      activeOpacity={0.7}
-    >
-      {/* Machine Avatar */}
-      <View style={styles.machineAvatar}>
-        <Server size={32} color={colors.primary} />
-      </View>
-
-      {/* Machine Info */}
-      <View style={styles.machineInfo}>
-        <Text style={styles.machineName}>{item.name}</Text>
-        <Text style={styles.machineId}>{item.machineId}</Text>
-      </View>
-
-      {/* Status Indicator */}
-      <View style={styles.statusContainer}>
-        {item.isOnline ? (
-          <>
-            <Wifi size={20} color={colors.online} />
-            <Text style={[styles.statusText, { color: colors.online }]}>Online</Text>
-          </>
-        ) : (
-          <>
-            <WifiOff size={20} color={colors.offline} />
-            <Text style={[styles.statusText, { color: colors.offline }]}>Offline</Text>
-          </>
-        )}
-
-        {item.streamUrl ? (
-          <View style={{ marginTop: 6, alignItems: 'center' }}>
-            <Camera size={16} color={colors.primary} />
-            <Text style={[styles.statusText, { color: colors.primary, fontSize: 10 }]}>Camera</Text>
-          </View>
-        ) : null}
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}> 
-      <StatusBar barStyle="dark-content" backgroundColor={colors.creamBackground} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.pageBackground} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -155,30 +124,10 @@ export default function MachineLobbyScreen({ navigation }: any) {
         <Plus size={20} color={colors.cardWhite} />
       </TouchableOpacity>
 
-      {/* Bottom Navigation - safe area aware */}
-      <View style={[styles.bottomNavWrapper, { paddingBottom: insets.bottom }]}> 
-        <Animated.View style={[styles.bottomNav, { transform: [{ translateY: barTranslateY }] }]}> 
-          {TABS.map((tab) => {
-            const isActive = selected === tab.key;
-            const scale = iconScales[tab.key] || new Animated.Value(1);
-            const Icon = tab.Icon as any;
-
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={styles.tabButton}
-                onPress={() => onPressTab(tab.key)}
-                activeOpacity={0.85}
-              >
-                <Animated.View style={{ transform: [{ scale }] }}>
-                  <Icon size={22} color={isActive ? colors.navActive : colors.navInactive} />
-                </Animated.View>
-                <Text style={[styles.tabLabel, { color: isActive ? '#000' : colors.navInactive }]}>{tab.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </Animated.View>
-      </View>
+      {/* Bottom Navigation (separated component) */}
+      <BottomNavigation onTabPress={(tabKey) => {
+        try { navigation.navigate(tabKey); } catch (e) { console.warn(`Navigation target '${tabKey}' may not exist.`); }
+      }} />
     </SafeAreaView>
   );
 }
@@ -186,7 +135,7 @@ export default function MachineLobbyScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.creamBackground,
+    backgroundColor: colors.pageBackground,
   },
   header: {
     paddingHorizontal: 24,
@@ -209,15 +158,21 @@ const styles = StyleSheet.create({
   machineCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardWhite,
+    backgroundColor: colors.cardBackground,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: colors.shadow,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  machineCardHover: {
+    transform: [{ translateY: -6 }],
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
   },
   machineAvatar: {
     width: 56,
@@ -293,7 +248,7 @@ const styles = StyleSheet.create({
     right: 12,
     width: 56,
     height: 56,
-    borderRadius: 5,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
@@ -303,32 +258,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  bottomNavWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-  },
-  bottomNav: {
-    width: '100%',
-    marginHorizontal: 0,
-    height: NAV_HEIGHT,
-    borderRadius: 0,
-    backgroundColor: colors.cardWhite,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16,
-    // shadow on top border
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#00000010',
-  },
+
   tabButton: {
     flex: 1,
     alignItems: 'center',

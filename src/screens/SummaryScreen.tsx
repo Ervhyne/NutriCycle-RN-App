@@ -39,7 +39,7 @@ export default function SummaryScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.creamBackground },
+  container: { flex: 1, backgroundColor: colors.pageBackground },
   content: { padding: 20, paddingTop: 24 },
   title: { fontSize: 24, fontWeight: '700', color: colors.primary, marginBottom: 12 },
   row: { marginBottom: 8, color: colors.primaryText },

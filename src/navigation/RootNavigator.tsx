@@ -27,6 +27,7 @@ export default function RootNavigator() {
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="VerificationCode" component={VerificationCodeScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="Machines" component={MachineLobbyScreen} />
         <Stack.Screen name="Lobby" component={MachineLobbyScreen} />
         <Stack.Screen 
           name="AddMachine" 
