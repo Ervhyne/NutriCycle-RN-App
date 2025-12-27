@@ -1,6 +1,9 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { LoginScreen } from '../screens/auth/LoginScreen';
+import { SignUpScreen } from '../screens/auth/SignUpScreen';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import MachineLobbyScreen from '../screens/MachineLobbyScreen';
 import AddMachineScreen from '../screens/AddMachineScreen';
 import NewBatchScreen from '../screens/NewBatchScreen';
@@ -13,11 +16,14 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Lobby"
+        initialRouteName="Login"
         screenOptions={{
           headerShown: false,
         }}
       >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Lobby" component={MachineLobbyScreen} />
         <Stack.Screen 
