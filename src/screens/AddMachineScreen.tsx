@@ -122,7 +122,7 @@ export default function AddMachineScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.pageBackground,
+    backgroundColor: colors.creamBackground,
   },
   content: {
     flex: 1,

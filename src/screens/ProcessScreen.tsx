@@ -141,7 +141,7 @@ export default function ProcessScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.pageBackground },
+  container: { flex: 1, backgroundColor: colors.creamBackground },
   scrollContent: { padding: 16, paddingBottom: 32 },
   header: { marginBottom: 12 },
   title: { fontSize: 24, fontWeight: '700', color: colors.primary },
