@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp, useRoute, RouteProp } from '@react-navigation/native';
 import { ChevronLeft } from 'lucide-react-native';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import { RootStackParamList } from '../../navigation/types';
@@ -28,7 +28,7 @@ type VerificationCodeScreenRouteProp = RouteProp<RootStackParamList, 'Verificati
 export const VerificationCodeScreen = () => {
   const navigation = useNavigation<VerificationCodeScreenNavigationProp>();
   const route = useRoute<VerificationCodeScreenRouteProp>();
-  const { email, verificationCode } = route.params;
+  const { email, verificationCode, purpose, password, confirmPassword } = route.params;
   
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -93,13 +93,24 @@ export const VerificationCodeScreen = () => {
 
     setLoading(true);
     try {
-      const resetUrl = process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT || 'https://authnutricycle.firebaseapp.com';
-      await sendPasswordResetEmail(auth, email, { url: resetUrl });
-      setShowSuccessModal(true);
+      if (purpose === 'reset') {
+        // Password reset flow
+        const resetUrl = process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT || 'https://authnutricycle.firebaseapp.com';
+        await sendPasswordResetEmail(auth, email, { url: resetUrl });
+        setShowSuccessModal(true);
+      } else if (purpose === 'signup') {
+        // Signup flow - create account after verification
+        await createUserWithEmailAndPassword(auth, email, password!);
+        setShowSuccessModal(true);
+      }
     } catch (error: any) {
-      let errorMessage = 'Failed to send reset email';
-      if (error.code === 'auth/invalid-email') {
+      let errorMessage = 'Failed to complete verification';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered';
+      } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email address';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak';
       } else if (error.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email';
       }
@@ -247,8 +258,12 @@ export const VerificationCodeScreen = () => {
             <View style={styles.modalCheckCircle}>
               <Text style={styles.modalCheckMark}>✓</Text>
             </View>
-            <Text style={styles.modalTitle}>Password Reset!</Text>
-            <Text style={styles.modalSubtitle}>Your password has been reset successfully.</Text>
+            <Text style={styles.modalTitle}>{purpose === 'signup' ? 'Account Created!' : 'Password Reset!'}</Text>
+            <Text style={styles.modalSubtitle}>
+              {purpose === 'signup' 
+                ? 'Your account has been created successfully.' 
+                : 'Your password has been reset successfully.'}
+            </Text>
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => navigation.navigate('Login')}

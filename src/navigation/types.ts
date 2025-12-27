@@ -7,6 +7,9 @@ export type RootStackParamList = {
   VerificationCode: {
     email: string;
     verificationCode: string;
+    purpose: 'reset' | 'signup';
+    password?: string;
+    confirmPassword?: string;
   };
   Dashboard: undefined;
   Lobby: undefined;

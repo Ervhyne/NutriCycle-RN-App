@@ -84,20 +84,66 @@ export const SignUpScreen = () => {
 
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
-    } catch (error: any) {
-      let errorMessage = 'Failed to create account';
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email is already registered';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak';
+      // Generate 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Send verification code via Brevo API
+      const brevoKey = process.env.EXPO_PUBLIC_BREVO_API_KEY || process.env.BREVO_API_KEY;
+      if (!brevoKey) {
+        throw new Error('Missing Brevo API key');
       }
-      Alert.alert('Sign Up Failed', errorMessage);
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoKey,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: 'NutriCycle', email: 'micodelacruz519@gmail.com' },
+          to: [{ email }],
+          subject: 'Your NutriCycle Verification Code',
+          htmlContent: `
+            <html>
+              <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px;">
+                  <h2 style="color: #1F5F2A; margin-bottom: 20px;">NutriCycle Verification Code</h2>
+                  <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                    Your verification code is:
+                  </p>
+                  <div style="background-color: #FBF6C8; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+                    <h1 style="color: #1F5F2A; margin: 0; font-size: 36px; letter-spacing: 8px;">${verificationCode}</h1>
+                  </div>
+                  <p style="font-size: 14px; color: #666;">
+                    This code will expire in 10 minutes. Please do not share this code with anyone.
+                  </p>
+                </div>
+              </body>
+            </html>
+          `,
+        }),
+      });
+
+      if (!response.ok) {
+        const msg = await response.text();
+        throw new Error(msg || 'Failed to send verification code');
+      }
+
+      // Navigate to verification screen with password for account creation later
+      navigation.navigate('VerificationCode', { 
+        email, 
+        verificationCode,
+        purpose: 'signup',
+        password,
+        confirmPassword,
+      });
+    } catch (error: any) {
+      let errorMessage = 'Failed to send verification code';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

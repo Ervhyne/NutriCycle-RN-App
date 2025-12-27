@@ -108,7 +108,7 @@ export const ForgotPasswordScreen = () => {
       }
 
       // Navigate to verification screen
-      navigation.navigate('VerificationCode', { email, verificationCode });
+      navigation.navigate('VerificationCode', { email, verificationCode, purpose: 'reset' });
     } catch (error: any) {
       let errorMessage = 'Failed to send verification code';
       if (error.message) {
