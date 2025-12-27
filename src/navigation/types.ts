@@ -13,6 +13,10 @@ export type RootStackParamList = {
   };
   Dashboard: undefined;
   Lobby: undefined;
+  Settings: undefined;
+  ChangePassword: undefined;
+  Notifications: undefined;
+    History: undefined;
   AddMachine: undefined;
   NewBatch: undefined;
   BatchSession: undefined;

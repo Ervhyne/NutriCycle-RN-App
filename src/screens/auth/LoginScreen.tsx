@@ -64,7 +64,7 @@ export const LoginScreen = () => {
       await signInWithEmailAndPassword(auth, email, password);
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Dashboard' }],
+        routes: [{ name: 'Lobby' }],
       });
     } catch (error: any) {
       let errorMessage = 'Failed to login';
