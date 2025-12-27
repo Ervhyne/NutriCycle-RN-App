@@ -9,8 +9,11 @@ import {
   Pressable,
   StatusBar,
   Platform,
+  Alert,
+  Image,
 } from 'react-native';
-import { Plus, Server, Wifi, WifiOff, Camera } from 'lucide-react-native';
+import { Plus, Wifi, WifiOff, Camera, MoreHorizontal } from 'lucide-react-native';
+import MachineIcon from '../components/MachineIcon';
 import { useMachineStore } from '../stores/machineStore';
 import { Machine } from '../types';
 import { colors } from '../theme/colors';
@@ -19,8 +22,10 @@ import BottomNavigation, { NAV_HEIGHT } from '../components/BottomNavigation';
 
 
 export default function MachineLobbyScreen({ navigation }: any) {
-  const { machines, selectMachine } = useMachineStore();
+  const { machines, selectMachine, removeMachine } = useMachineStore();
   const insets = useSafeAreaInsets();
+
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
 
 
@@ -39,8 +44,22 @@ export default function MachineLobbyScreen({ navigation }: any) {
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
+  const handleEditMachine = (machine: Machine) => {
+    setOpenMenuId(null);
+    navigation.navigate('AddMachine', { mode: 'edit', machine });
+  };
+
+  const handleDeleteMachine = (machineId: string) => {
+    setOpenMenuId(null);
+    Alert.alert('Delete Machine', 'Are you sure you want to delete this machine?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => removeMachine(machineId) },
+    ]);
+  };
+
   const renderMachineCard = ({ item }: { item: Machine }) => {
     const isHovered = hoveredId === item.id;
+    const isMenuOpen = openMenuId === item.id;
 
     return (
       <Pressable
@@ -52,37 +71,62 @@ export default function MachineLobbyScreen({ navigation }: any) {
           isHovered && styles.machineCardHover,
         ]}
       >
+        {/* three-dot menu */}
+        <View style={styles.moreWrapper} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.moreButton}
+            onPress={() => setOpenMenuId(isMenuOpen ? null : item.id)}
+            activeOpacity={0.8}
+          >
+            <MoreHorizontal size={20} color={colors.iconPrimary} />
+          </TouchableOpacity>
+
+          {isMenuOpen ? (
+            <View style={styles.menuBox}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleEditMachine(item)}>
+                <Text style={styles.menuText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleDeleteMachine(item.id)}>
+                <Text style={[styles.menuText, { color: colors.danger }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+
         {/* Machine Avatar */}
         <View style={styles.machineAvatar}>
-          <Server size={32} color={colors.primary} />
+          <Image source={require('../../assets/Machine Asset.png')} style={styles.machineImage} resizeMode="contain" />
         </View>
 
         {/* Machine Info */}
         <View style={styles.machineInfo}>
           <Text style={styles.machineName}>{item.name}</Text>
-          <Text style={styles.machineId}>{item.machineId}</Text>
-        </View>
+          <Text style={styles.machineId}><Text style={styles.machineIdLabel}>ID: </Text><Text style={styles.machineIdValue}>{item.machineId}</Text></Text>
 
-        {/* Status Indicator */}
-        <View style={styles.statusContainer}>
-          {item.isOnline ? (
-            <>
-              <Wifi size={20} color={colors.online} />
-              <Text style={[styles.statusText, { color: colors.online }]}>Online</Text>
-            </>
-          ) : (
-            <>
-              <WifiOff size={20} color={colors.offline} />
-              <Text style={[styles.statusText, { color: colors.offline }]}>Offline</Text>
-            </>
-          )}
-
-          {item.streamUrl ? (
-            <View style={{ marginTop: 6, alignItems: 'center' }}>
-              <Camera size={16} color={colors.primary} />
-              <Text style={[styles.statusText, { color: colors.primary, fontSize: 10 }]}>Camera</Text>
+          {/* footer row */}
+          <View style={styles.cardFooter}>
+            <View style={[styles.statusPill, item.isOnline ? styles.statusOnline : styles.statusOffline]}>
+              {item.isOnline ? (
+                <>
+                  <Wifi size={14} color={colors.success} />
+                  <Text style={[styles.statusPillText, { marginLeft: 6 }]}>Online</Text>
+                </>
+              ) : (
+                <>
+                  <WifiOff size={14} color={colors.offline} />
+                  <Text style={[styles.statusPillText, { marginLeft: 6 }]}>Offline</Text>
+                </>
+              )}
             </View>
-          ) : null}
+
+            {/* Camera indicator stays optional */}
+            {item.streamUrl ? (
+              <View style={styles.cameraPill}>
+                <Camera size={12} color={colors.primary} />
+                <Text style={[styles.statusPillText, { color: colors.primary, marginLeft: 6 }]}>Camera</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
       </Pressable>
     );
@@ -101,7 +145,7 @@ export default function MachineLobbyScreen({ navigation }: any) {
       {/* Machines List */}
       {machines.length === 0 ? (
         <View style={styles.emptyState}>
-          <Server size={64} color={colors.mutedText} />
+          <Image source={require('../../assets/Machine Asset.png')} style={styles.emptyImage} resizeMode="contain" />
           <Text style={styles.emptyTitle}>No Machines</Text>
           <Text style={styles.emptyText}>Add your first NutriCycle machine to get started</Text>
         </View>
@@ -158,10 +202,12 @@ const styles = StyleSheet.create({
   machineCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardWhite,
+    backgroundColor: colors.cardSurface,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 2.5,
+    borderColor: colors.cardBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -173,29 +219,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
   },
   machineAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.softGreenSurface,
+    width: 95,
+    height: 80,
+    borderRadius: 15,
+    backgroundColor: '#E7E6B9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 5,
+    borderColor: colors.cardBorder,
+  },
+  machineImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
   machineInfo: {
     flex: 1,
   },
   machineName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.primaryText,
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.contentText,
+    marginBottom: 6,
   },
   machineId: {
     fontSize: 14,
     color: colors.mutedText,
-    fontFamily: 'monospace',
+  },
+  machineIdLabel: {
+    color: colors.mutedText,
+    fontSize: 14,
+  },
+  machineIdValue: {
+    color: colors.contentText,
+    fontSize: 14,
+    fontWeight: '700',
   },
   statusContainer: {
     alignItems: 'center',
@@ -204,6 +271,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  moreWrapper: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 4,
+    alignItems: 'flex-end',
+  },
+  moreButton: {
+    padding: 6,
+    borderRadius: 8,
+  },
+  menuBox: {
+    marginTop: 8,
+    backgroundColor: colors.cardSurface,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  menuText: {
+    fontSize: 14,
+    color: colors.primaryText,
+    fontWeight: '600',
+  },
+  cardFooter: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusPill: {
+    backgroundColor: colors.statusBackground,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  statusOnline: {
+    // kept for future fine-grained overrides (no bg override)
+  },
+  statusOffline: {
+    // kept for future fine-grained overrides (no bg override)
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.contentText,
+  },
+  cameraPill: {
+    backgroundColor: colors.cardSurface,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -211,16 +344,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: colors.primaryText,
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.primary,
+    marginTop: 20,
+    marginBottom: 10,
   },
   emptyText: {
     fontSize: 16,
     color: colors.mutedText,
     textAlign: 'center',
+  },
+  emptyImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 12,
   },
   fab: {
     position: 'absolute',
