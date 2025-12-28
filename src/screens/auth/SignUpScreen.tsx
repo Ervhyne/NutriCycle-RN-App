@@ -25,6 +25,14 @@ import { RootStackParamList } from '../../navigation/types';
 
 type SignUpScreenNavigationProp = NavigationProp<RootStackParamList, 'SignUp'>;
 
+interface PasswordRequirements {
+  minLength: boolean;
+  hasUppercase: boolean;
+  hasLowercase: boolean;
+  hasSpecialChar: boolean;
+  hasNumeric: boolean;
+}
+
 export const SignUpScreen = () => {
   const navigation = useNavigation<SignUpScreenNavigationProp>();
   const [email, setEmail] = useState('');
@@ -35,7 +43,23 @@ export const SignUpScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+  const [showPasswordMismatch, setShowPasswordMismatch] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  const validatePasswordRequirements = (pwd: string): PasswordRequirements => {
+    return {
+      minLength: pwd.length >= 8,
+      hasUppercase: /[A-Z]/.test(pwd),
+      hasLowercase: /[a-z]/.test(pwd),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
+      hasNumeric: /[0-9]/.test(pwd),
+    };
+  };
+
+  const passwordRequirements = validatePasswordRequirements(password);
+  const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
 
   useEffect(() => {
     if (loading) {
@@ -73,12 +97,13 @@ export const SignUpScreen = () => {
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      setShowPasswordMismatch(true);
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    // Check if password requirements are met, if not show modal
+    if (!allRequirementsMet) {
+      setShowPasswordRequirements(true);
       return;
     }
 
@@ -229,7 +254,11 @@ export const SignUpScreen = () => {
                   <TouchableOpacity onPress={() => setShowTermsModal(true)}>
                     <Text style={styles.termsLink}>Terms &amp; Conditions</Text>
                   </TouchableOpacity>
-                  <Text style={styles.termsText}> and Privacy Notice.</Text>
+                  <Text style={styles.termsText}> and </Text>
+                  <TouchableOpacity onPress={() => setShowPrivacyModal(true)}>
+                    <Text style={styles.termsLink}>Privacy Notice</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.termsText}>.</Text>
                 </View>
               </View>
 
@@ -291,6 +320,89 @@ export const SignUpScreen = () => {
         </View>
       </Modal>
 
+      <Modal visible={showPrivacyModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Privacy Notice</Text>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalText}>
+                NutriCycle respects your privacy. This notice explains what data we collect, why we collect it, and how we protect it when you use the app.
+              </Text>
+              <Text style={styles.modalText}>
+                We collect your email address and basic account information to create and manage your account, send verification codes, and provide app features.
+              </Text>
+              <Text style={styles.modalText}>
+                Operational telemetry from the machine (e.g., status, production metrics) may be associated with your account to improve reliability and user experience.
+              </Text>
+              <Text style={styles.modalText}>
+                Your data is stored securely and is not sold or shared with third parties except service providers strictly necessary to operate the app (e.g., email delivery).
+              </Text>
+              <Text style={styles.modalText}>
+                You can request deletion of your account and related data at any time by contacting: nutricycle.project@gmail.com.
+              </Text>
+              <Text style={styles.modalText}>
+                We may update this notice as the system evolves. Significant changes will be communicated within the app.
+              </Text>
+            </ScrollView>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowPrivacyModal(false)}>
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showPasswordRequirements} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Password Requirements</Text>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <RequirementRow 
+                met={passwordRequirements.minLength}
+                text="At least 8 characters"
+              />
+              <RequirementRow 
+                met={passwordRequirements.hasUppercase}
+                text="Uppercase character (A-Z)"
+              />
+              <RequirementRow 
+                met={passwordRequirements.hasLowercase}
+                text="Lowercase character (a-z)"
+              />
+              <RequirementRow 
+                met={passwordRequirements.hasNumeric}
+                text="Numeric character (0-9)"
+              />
+              <RequirementRow 
+                met={passwordRequirements.hasSpecialChar}
+                text="Special character (!@#$%...)"
+              />
+            </ScrollView>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowPasswordRequirements(false)}>
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showPasswordMismatch} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitleError}>Passwords Do Not Match</Text>
+            <View style={styles.modalBody}>
+              <View style={styles.errorIconContainer}>
+                <Text style={styles.errorIcon}>⚠️</Text>
+              </View>
+              <Text style={styles.errorMessage}>
+                The password and confirm password fields do not match. Please ensure both passwords are identical.
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowPasswordMismatch(false)}>
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {loading && (
         <View style={styles.loadingOverlay}>
           <Animated.Image
@@ -304,6 +416,23 @@ export const SignUpScreen = () => {
     </SafeAreaView>
   );
 };
+
+const RequirementRow = ({ met, text }: { met: boolean; text: string }) => (
+  <View style={styles.requirementRow}>
+    <Text style={[
+      styles.requirementCheckmark, 
+      met ? styles.requirementCheckmarkMet : styles.requirementCheckmarkUnmet
+    ]}>
+      {met ? '✓' : '✕'}
+    </Text>
+    <Text style={[
+      styles.requirementText, 
+      met ? styles.requirementTextMet : styles.requirementTextUnmet
+    ]}>
+      {text}
+    </Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -340,6 +469,7 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     marginBottom: 28,
     textAlign: 'center',
+     fontWeight: '600',
   },
   form: {
     width: '100%',
@@ -428,7 +558,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.primary,
     marginRight: 12,
     marginTop: 2,
     justifyContent: 'center',
@@ -480,6 +610,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
+  modalTitleError: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#D32F2F',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
   modalBody: {
     marginBottom: 16,
   },
@@ -520,5 +657,79 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.primary,
+  },
+  requirementsContainer: {
+    width: '100%',
+    maxWidth: 350,
+    backgroundColor: '#F0F4EE',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  requirementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryText,
+    marginBottom: 12,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requirementCheckmark: {
+    fontSize: 16,
+    color: '#999',
+    marginRight: 8,
+    fontWeight: 'bold',
+    width: 20,
+  },
+  requirementCheckmarkMet: {
+    color: colors.primary,
+  },
+  requirementCheckmarkUnmet: {
+    color: '#D32F2F',
+  },
+  requirementText: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
+  },
+  requirementTextMet: {
+    color: colors.primaryText,
+    fontWeight: '500',
+  },
+  requirementTextUnmet: {
+    color: '#D32F2F',
+    fontWeight: '500',
+  },
+  mismatchWarning: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D32F2F',
+  },
+  mismatchWarningText: {
+    color: '#D32F2F',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  errorIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorIcon: {
+    fontSize: 48,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: colors.primaryText,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });
