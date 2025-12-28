@@ -20,6 +20,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
+import ScreenTitle from '../../components/ScreenTitle';
 import { RootStackParamList } from '../../navigation/types';
 
 type VerificationCodeScreenNavigationProp = NavigationProp<RootStackParamList, 'VerificationCode'>;
@@ -177,7 +178,7 @@ export const VerificationCodeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <SafeAreaView style={[styles.container, { paddingTop: Math.min(insets.top, 12), paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
@@ -194,7 +195,7 @@ export const VerificationCodeScreen = () => {
             </TouchableOpacity>
 
             <View style={styles.formContainer}>
-              <Text style={styles.title}>Verification Code</Text>
+              <ScreenTitle>Verification Code</ScreenTitle>
               <Text style={styles.subtitle}>
                 Please enter the 6-digit verification code sent to your email address.
               </Text>

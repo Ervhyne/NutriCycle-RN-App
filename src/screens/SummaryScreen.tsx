@@ -3,6 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
+import ScreenTitle from '../components/ScreenTitle';
 
 export default function SummaryScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -12,11 +13,11 @@ export default function SummaryScreen({ navigation }: any) {
     return (
       <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
         <View style={styles.content}>
-          <Text style={styles.title}>No Batch</Text>
+          <ScreenTitle>No Batch</ScreenTitle>
           <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Dashboard')}>
             <Text style={styles.buttonText}>Return to Dashboard</Text>
           </TouchableOpacity>
-        </View>
+        </View> 
       </SafeAreaView>
     );
   }
@@ -24,7 +25,7 @@ export default function SummaryScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.content}>
-        <Text style={styles.title}>Batch Summary</Text>
+        <ScreenTitle>Batch Summary</ScreenTitle>
         <Text style={styles.row}><Text style={{ fontWeight: '700' }}>Batch ID:</Text> {currentBatch.id}</Text>
         <Text style={styles.row}><Text style={{ fontWeight: '700' }}>Type:</Text> {currentBatch.type}</Text>
         <Text style={styles.row}><Text style={{ fontWeight: '700' }}>Status:</Text> {currentBatch.status}</Text>

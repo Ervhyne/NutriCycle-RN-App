@@ -16,6 +16,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ScreenTitle from '../../components/ScreenTitle';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -106,7 +107,7 @@ export const LoginScreen = () => {
             </View>
 
             {/* Title and Subtitle */}
-            <Text style={styles.title}>Welcome to NutriCycle</Text>
+            <ScreenTitle>Welcome to NutriCycle</ScreenTitle>
             <Text style={styles.subtitle}>Log in to manage cabbage waste</Text>
 
             {/* Form */}

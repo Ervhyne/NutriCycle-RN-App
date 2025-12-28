@@ -14,6 +14,7 @@ import {
 import { QrCode, Hash } from 'lucide-react-native';
 import { useMachineStore } from '../stores/machineStore';
 import { colors } from '../theme/colors';
+import ScreenTitle from '../components/ScreenTitle';
 
 export default function AddMachineScreen({ navigation }: any) {
   const [machineId, setMachineId] = useState('');
@@ -61,7 +62,7 @@ export default function AddMachineScreen({ navigation }: any) {
         <View style={styles.headerRow}>
           <Image source={require('../../assets/Add Machine Asset.png')} style={styles.headerImage} resizeMode="contain" />
           <View style={styles.headerText}>
-            <Text style={styles.title}>Add Machine</Text>
+            <ScreenTitle>Add Machine</ScreenTitle>
             <Text style={styles.subtitle}>Enter machine details or scan the QR code on your NutriCycle device</Text>
           </View>
         </View>
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: colors.cardWhite,
+    backgroundColor: colors.creamBackground,
     borderRadius: 14,
     padding: 20,
     alignItems: 'center',

@@ -20,6 +20,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { ChevronLeft } from 'lucide-react-native';
 import { auth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
+import ScreenTitle from '../../components/ScreenTitle';
 import { RootStackParamList } from '../../navigation/types';
 
 type ForgotPasswordScreenNavigationProp = NavigationProp<RootStackParamList, 'ForgotPassword'>;
@@ -122,7 +123,7 @@ export const ForgotPasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <SafeAreaView style={[styles.container, { paddingTop: Math.min(insets.top, 12), paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
@@ -139,7 +140,7 @@ export const ForgotPasswordScreen = () => {
             </TouchableOpacity>
 
             <View style={styles.formContainer}>
-              <Text style={styles.title}>Forgot Password?</Text>
+              <ScreenTitle>Forgot Password?</ScreenTitle>
               <Text style={styles.subtitle}>
                 Enter your email address to receive a password reset link
               </Text>

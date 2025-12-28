@@ -3,6 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { colors } from '../theme/colors';
 import { LineChart, BarChart } from 'react-native-chart-kit';
+import ScreenTitle from '../components/ScreenTitle';
 
 const screenWidth = Dimensions.get('window').width - 32;
 
@@ -22,8 +23,8 @@ export default function ReportsScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 8 + insets.top, paddingBottom: 80 + insets.bottom }}>
-        <View style={[styles.header, { paddingTop: insets.top }] }>
-          <Text style={styles.title}>Reports</Text>
+        <View style={[styles.header, { paddingTop: Math.min(insets.top, 12) }] }>
+          <ScreenTitle>Reports</ScreenTitle>
         </View>
 
         <Text style={styles.sectionTitle}>Weekly Throughput</Text>

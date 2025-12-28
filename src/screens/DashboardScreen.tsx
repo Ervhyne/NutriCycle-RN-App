@@ -3,6 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { colors } from '../theme/colors';
+import ScreenTitle from '../components/ScreenTitle';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { useMachineStore } from '../stores/machineStore';
 
@@ -24,9 +25,9 @@ export default function DashboardScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 8 + insets.top, paddingBottom: 80 + insets.bottom }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 80 + insets.bottom, flexGrow: 1 }}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Dashboard</Text>
+          <ScreenTitle>Dashboard</ScreenTitle>
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Machines')}>
             <Text style={styles.headerButtonText}>Machines</Text>
           </TouchableOpacity>
@@ -36,7 +37,7 @@ export default function DashboardScreen({ navigation }: any) {
         <LineChart
           data={sampleLineData}
           width={screenWidth}
-          height={220}
+          height={260}
           chartConfig={{
             backgroundGradientFrom: colors.cardWhite,
             backgroundGradientTo: colors.cardWhite,
@@ -50,7 +51,7 @@ export default function DashboardScreen({ navigation }: any) {
         <BarChart
           data={sampleBarData}
           width={screenWidth}
-          height={180}
+          height={200}
           yAxisLabel=""
           yAxisSuffix=""
           chartConfig={{

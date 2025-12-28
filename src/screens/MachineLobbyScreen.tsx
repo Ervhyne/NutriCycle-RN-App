@@ -12,8 +12,9 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { Plus, Wifi, WifiOff, Camera, MoreHorizontal } from 'lucide-react-native';
+import { Plus, Wifi, WifiOff, Camera, MoreHorizontal, XCircle } from 'lucide-react-native';
 import MachineIcon from '../components/MachineIcon';
+import ScreenTitle from '../components/ScreenTitle';
 import { useMachineStore } from '../stores/machineStore';
 import { Machine } from '../types';
 import { colors } from '../theme/colors';
@@ -22,7 +23,7 @@ import { NAV_HEIGHT } from '../components/BottomNavigation';
 
 
 export default function MachineLobbyScreen({ navigation }: any) {
-  const { machines, selectMachine, removeMachine } = useMachineStore();
+  const { machines, selectMachine, removeMachine, batches } = useMachineStore();
   const insets = useSafeAreaInsets();
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -126,6 +127,16 @@ export default function MachineLobbyScreen({ navigation }: any) {
                 <Text style={[styles.statusPillText, { color: colors.primary, marginLeft: 6 }]}>Camera</Text>
               </View>
             ) : null}
+
+            {/* Activity badge (Idle / Running) */}
+            {item.isOnline && (() => {
+              const running = batches.some((b) => b.machineId === item.id && b.status === 'running');
+              return (
+                <View style={[styles.activityPill, running ? styles.activityRunning : styles.activityIdle, { marginLeft: 'auto' }]}>
+                  <Text style={[styles.activityText, running ? { color: colors.cardWhite } : { color: colors.primary }]}>{running ? 'Running' : 'Idle'}</Text>
+                </View>
+              );
+            })()}
           </View>
         </View>
       </Pressable>
@@ -138,14 +149,16 @@ export default function MachineLobbyScreen({ navigation }: any) {
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Machines</Text>
+        <ScreenTitle>Machines</ScreenTitle>
         <Text style={styles.subtitle}>Select a machine to continue</Text>
       </View>
 
       {/* Machines List */}
       {machines.length === 0 ? (
         <View style={styles.emptyState}>
-          <Image source={require('../../assets/Machine Asset.png')} style={styles.emptyImage} resizeMode="contain" />
+          <View style={styles.emptyIcon}>
+            <XCircle size={56} color={colors.mutedText} />
+          </View>
           <Text style={styles.emptyTitle}>No Machines</Text>
           <Text style={styles.emptyText}>Add your first NutriCycle machine to get started</Text>
         </View>
@@ -334,6 +347,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  activityPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  activityRunning: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  activityIdle: {
+    backgroundColor: colors.softGreenSurface,
+    borderColor: colors.cardBorder,
+  },
+  activityText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -352,10 +385,19 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     textAlign: 'center',
   },
-  emptyImage: {
-    width: 120,
-    height: 120,
+  emptyIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.cardSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 4,
   },
   fab: {
     position: 'absolute',

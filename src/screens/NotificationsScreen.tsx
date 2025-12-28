@@ -56,7 +56,7 @@ export const NotificationsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <SafeAreaView style={[styles.container, { paddingTop: Math.min(insets.top, 12), paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
