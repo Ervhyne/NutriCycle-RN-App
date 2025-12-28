@@ -4,11 +4,11 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Switch,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { ChevronLeft } from 'lucide-react-native';
 import { colors } from '../theme/colors';
@@ -20,6 +20,7 @@ export const NotificationsScreen = () => {
   const navigation = useNavigation<NotificationsScreenNavigationProp>();
   const [processingAlerts, setProcessingAlerts] = useState(true);
   const [reminderNotifications, setReminderNotifications] = useState(true);
+  const insets = useSafeAreaInsets();
 
   const NotificationItem = ({
     title,
@@ -55,7 +56,7 @@ export const NotificationsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -67,7 +68,7 @@ export const NotificationsScreen = () => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Alerts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Alerts</Text>

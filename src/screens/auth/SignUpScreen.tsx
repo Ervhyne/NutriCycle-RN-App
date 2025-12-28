@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -81,6 +81,7 @@ export const SignUpScreen = () => {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
+  const insets = useSafeAreaInsets();
 
   const canSubmit =
     agreeToTerms && email.trim().length > 0 && password.length > 0 && confirmPassword.length > 0 && !loading;
@@ -175,12 +176,13 @@ export const SignUpScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
             <Image source={require('../../../assets/Logo.png')} style={styles.logo} />
             <Text style={styles.title}>Create Account</Text>

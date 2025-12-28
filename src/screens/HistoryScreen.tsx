@@ -4,18 +4,18 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   FlatList,
   Platform,
   Modal,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Calendar, Clock } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { RootStackParamList } from '../navigation/types';
-import BottomNavigation, { NAV_HEIGHT } from '../components/BottomNavigation';
+import { NAV_HEIGHT } from '../components/BottomNavigation';
 
 type HistoryScreenNavigationProp = NavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -57,17 +57,8 @@ export const HistoryScreen = () => {
   };
 
   const closePicker = () => setShowPicker(false);
+  const insets = useSafeAreaInsets();
 
-  const handleTabPress = (tabKey: string) => {
-    if (tabKey === 'Machines') {
-      navigation.navigate('Lobby');
-    } else if (tabKey === 'Reports') {
-      navigation.navigate('Dashboard');
-    } else if (tabKey === 'Settings') {
-      navigation.navigate('Settings');
-    }
-    // History tab is current tab, do nothing
-  };
 
   const renderBatchItem = ({ item }: { item: BatchRecord }) => (
     <View style={styles.batchItem}>
@@ -95,12 +86,12 @@ export const HistoryScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Batch History</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Filter Section */}
         <View style={styles.filterContainer}>
           <TouchableOpacity style={styles.filterButton} onPress={handleOpenPicker}>
@@ -177,7 +168,7 @@ export const HistoryScreen = () => {
         </Modal>
       )}
 
-      <BottomNavigation onTabPress={handleTabPress} selectedTab="History" />
+
     </SafeAreaView>
   );
 };

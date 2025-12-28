@@ -20,6 +20,8 @@ export default function AddMachineScreen({ navigation }: any) {
   const [machineName, setMachineName] = useState('');
   const { addMachine } = useMachineStore();
   const insets = useSafeAreaInsets();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [addedMachineName, setAddedMachineName] = useState('');
 
   const handleAddMachine = () => {
     if (!machineId.trim()) {
@@ -41,9 +43,8 @@ export default function AddMachineScreen({ navigation }: any) {
     };
 
     addMachine(newMachine);
-    Alert.alert('Success', `${machineName} has been added!`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+    setAddedMachineName(newMachine.name);
+    setShowSuccessModal(true);
   };
 
   const handleScanQR = () => {
@@ -58,7 +59,7 @@ export default function AddMachineScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.headerRow}>
-          <Image source={require('../../assets/Machine Asset.png')} style={styles.headerImage} resizeMode="contain" />
+          <Image source={require('../../assets/Add Machine Asset.png')} style={styles.headerImage} resizeMode="contain" />
           <View style={styles.headerText}>
             <Text style={styles.title}>Add Machine</Text>
             <Text style={styles.subtitle}>Enter machine details or scan the QR code on your NutriCycle device</Text>
@@ -122,6 +123,24 @@ export default function AddMachineScreen({ navigation }: any) {
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
+
+        {showSuccessModal && (
+          <View style={styles.modalOverlay} pointerEvents="box-none">
+            <View style={styles.modalCard}>
+              <View style={styles.modalCheckCircle}>
+                <Text style={styles.modalCheckMark}>✓</Text>
+              </View>
+              <Text style={styles.modalTitle}>Machine Added!</Text>
+              <Text style={styles.modalSubtitle}>{addedMachineName} has been added to your machines.</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => { setShowSuccessModal(false); navigation.goBack(); }}
+              >
+                <Text style={styles.modalButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -200,8 +219,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
   },
   inputField: {
     flex: 1,
@@ -215,7 +238,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.statusBackground,
     padding: 18,
-    borderRadius: 14,
+    borderRadius: 10,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -231,13 +254,13 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: colors.primary,
     paddingVertical: 18,
-    borderRadius: 14,
+    borderRadius: 10,
     alignItems: 'center',
     marginTop: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 6,
   },
   addButtonText: {
@@ -253,5 +276,70 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  /* Success modal */
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00000055',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.cardWhite,
+    borderRadius: 14,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalCheckCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  modalCheckMark: {
+    color: colors.cardWhite,
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.primaryText,
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.mutedText,
+    marginBottom: 14,
+    textAlign: 'center',
+  },
+  modalButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalButtonText: {
+    color: colors.cardWhite,
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

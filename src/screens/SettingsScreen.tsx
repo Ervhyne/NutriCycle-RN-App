@@ -4,22 +4,23 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { colors } from '../theme/colors';
 import { RootStackParamList } from '../navigation/types';
-import BottomNavigation, { NAV_HEIGHT } from '../components/BottomNavigation';
+import { NAV_HEIGHT } from '../components/BottomNavigation';
 
 type SettingsScreenNavigationProp = NavigationProp<RootStackParamList, 'Dashboard'>;
 
 export const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
 
   const handleLogOut = async () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -62,12 +63,12 @@ export const SettingsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Account Settings Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Settings</Text>
@@ -121,7 +122,7 @@ export const SettingsScreen = () => {
         </View>
       </ScrollView>
 
-      <BottomNavigation onTabPress={handleTabPress} selectedTab="Settings" />
+
     </SafeAreaView>
   );
 };

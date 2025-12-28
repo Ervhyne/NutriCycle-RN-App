@@ -29,15 +29,20 @@ export default function BottomNavigation({ onTabPress, selectedTab = 'Machines' 
     }, {})
   ).current;
 
-  const barTranslateY = useRef(new Animated.Value(30)).current;
+  // Removed translateY animation to keep bottom navigation static
 
+  // Sync with external selectedTab prop (e.g., when navigation state changes)
   useEffect(() => {
-    Animated.timing(barTranslateY, {
-      toValue: 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [barTranslateY]);
+    if (selectedTab === selected) return;
+
+    // animate icons similar to onPress
+    Animated.parallel([
+      Animated.spring(iconScales[selectedTab], { toValue: 1.15, useNativeDriver: true }),
+      Animated.spring(iconScales[selected], { toValue: 1, useNativeDriver: true }),
+    ]).start();
+
+    setSelected(selectedTab);
+  }, [selectedTab]);
 
   const onPressTab = (tabKey: string) => {
     if (tabKey === selected) return;
@@ -52,8 +57,16 @@ export default function BottomNavigation({ onTabPress, selectedTab = 'Machines' 
   };
 
   return (
-    <View style={[styles.bottomNavWrapper, { paddingBottom: insets.bottom }]}> 
-      <Animated.View style={[styles.bottomNav, { transform: [{ translateY: barTranslateY }] }]}> 
+    <View style={styles.bottomNavWrapper}>
+      <View
+        style={[
+          styles.bottomNav,
+          {
+            paddingBottom: insets.bottom,
+            height: NAV_HEIGHT + insets.bottom,
+          },
+        ]}
+      >
         {TABS.map((tab) => {
           const isActive = selected === tab.key;
           const scale = iconScales[tab.key] || new Animated.Value(1);
@@ -73,7 +86,7 @@ export default function BottomNavigation({ onTabPress, selectedTab = 'Machines' 
             </TouchableOpacity>
           );
         })}
-      </Animated.View>
+      </View>
     </View>
   );
 }

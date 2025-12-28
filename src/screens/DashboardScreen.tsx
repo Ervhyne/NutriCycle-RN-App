@@ -1,6 +1,7 @@
 import React from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import { Plus } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { useMachineStore } from '../stores/machineStore';
@@ -24,12 +25,12 @@ export default function DashboardScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 8 + insets.top, paddingBottom: 80 + insets.bottom }}>
-        <View style={[styles.headerRow, { paddingTop: insets.top }] }>
+        <View style={styles.headerRow}>
           <Text style={styles.title}>Dashboard</Text>
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('Machines')}>
             <Text style={styles.headerButtonText}>Machines</Text>
           </TouchableOpacity>
-        </View>
+        </View> 
 
         <Text style={styles.sectionTitle}>Weekly Throughput</Text>
         <LineChart
@@ -83,8 +84,8 @@ export default function DashboardScreen({ navigation }: any) {
         onPress={() => navigation.navigate('NewBatch')}
         activeOpacity={0.8}
       >
-        <Text style={styles.fabTextLarge}>＋</Text>
-      </TouchableOpacity>
+        <Plus size={20} color={colors.cardWhite} />
+      </TouchableOpacity> 
     </SafeAreaView>
   );
 }
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
   text: { color: colors.mutedText },
   batchItem: { backgroundColor: colors.cardWhite, padding: 10, borderRadius: 8, marginTop: 8 },
   batchText: { color: colors.primaryText, fontWeight: '600' },
-  fab: { position: 'absolute', width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', elevation: 6 },
+  fab: { position: 'absolute', width: 56, height: 56, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   fabTextLarge: { color: colors.cardWhite, fontSize: 28, lineHeight: 30 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerButton: { backgroundColor: colors.cardWhite, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
