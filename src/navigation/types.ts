@@ -11,6 +11,7 @@ export type RootStackParamList = {
     password?: string;
     confirmPassword?: string;
   };
+  Onboarding: undefined;
   Dashboard: undefined;
   Lobby: undefined;
   Settings: undefined;
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   History: undefined;
   AboutNutriCycle: undefined;
+  ContactUs: undefined;
   AddMachine: undefined;
   NewBatch: undefined;
     TermsAndConditions: undefined;

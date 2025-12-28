@@ -13,6 +13,7 @@ import MachineLobbyScreen from '../screens/MachineLobbyScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { TermsAndConditionsScreen } from '../screens/TermsAndConditionsScreen';
 import { PrivacyNoticeScreen } from '../screens/PrivacyNoticeScreen';
+import { ContactUsScreen } from '../screens/ContactUsScreen';
 import AddMachineScreen from '../screens/AddMachineScreen';
 import NewBatchScreen from '../screens/NewBatchScreen';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -21,6 +22,8 @@ import ReportsScreen from '../screens/ReportsScreen';
 import BottomNavigation from '../components/BottomNavigation';
 import SplashScreen from '../components/SplashScreen';
 import { navigationRef } from './NavigationService';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,10 +31,23 @@ export default function RootNavigator() {
   const [currentRoute, setCurrentRoute] = React.useState<string | undefined>(navigationRef.current?.getCurrentRoute()?.name);
   const [navigationReady, setNavigationReady] = React.useState(false);
   const [minSplashDone, setMinSplashDone] = React.useState(false);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     const t = setTimeout(() => setMinSplashDone(true), 900); // ensure splash shows briefly
     return () => clearTimeout(t);
+  }, []);
+
+  React.useEffect(() => {
+    const loadFlag = async () => {
+      try {
+        const value = await AsyncStorage.getItem('hasSeenOnboarding');
+        setHasSeenOnboarding(value === 'true');
+      } catch (e) {
+        setHasSeenOnboarding(false);
+      }
+    };
+    loadFlag();
   }, []);
 
   const onReady = () => {
@@ -39,7 +55,11 @@ export default function RootNavigator() {
     setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name);
   };
 
-  const showSplash = !(navigationReady && minSplashDone);
+  const showSplash = hasSeenOnboarding === null || !minSplashDone;
+
+  if (hasSeenOnboarding === null) {
+    return <SplashScreen />;
+  }
 
   return (
     <NavigationContainer
@@ -51,7 +71,7 @@ export default function RootNavigator() {
       }}
     >
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName={hasSeenOnboarding === false ? 'Onboarding' : 'Login'}
         screenOptions={{
           headerShown: false,
           animation: 'fade',
@@ -62,6 +82,7 @@ export default function RootNavigator() {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="VerificationCode" component={VerificationCodeScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Reports" component={ReportsScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -71,6 +92,7 @@ export default function RootNavigator() {
         <Stack.Screen name="AboutNutriCycle" component={AboutNutriCycleScreen} />
         <Stack.Screen name="Machines" component={MachineLobbyScreen} />
         <Stack.Screen name="Lobby" component={MachineLobbyScreen} />
+        <Stack.Screen name="ContactUs" component={ContactUsScreen} />
           <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
           <Stack.Screen name="PrivacyNotice" component={PrivacyNoticeScreen} />
         <Stack.Screen 
@@ -92,6 +114,8 @@ export default function RootNavigator() {
         <Stack.Screen name="BatchSession" component={BatchSessionScreen} />
         <Stack.Screen name="Summary" component={require('../screens/SummaryScreen').default} />
       </Stack.Navigator>
+
+      {showSplash && <SplashScreen />}
 
       {/* Render BottomNavigation once at the root so it doesn't animate with stack screen transitions */}
       {!showSplash && currentRoute && ['Lobby','Machines','Reports','History','Settings'].includes(currentRoute) && (

@@ -91,7 +91,7 @@ export const SettingsScreen = () => {
           <View style={styles.sectionContent}>
             <SettingRow 
               label="Contact Us" 
-              onPress={() => Alert.alert('Contact Us', 'Email: nutricycle.project@gmail.com')}
+              onPress={() => navigation.navigate('ContactUs')}
             />
             <View style={styles.divider} />
             <SettingRow 
