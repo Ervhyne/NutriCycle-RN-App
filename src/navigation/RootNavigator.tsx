@@ -8,8 +8,11 @@ import { VerificationCodeScreen } from '../screens/auth/VerificationCodeScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { AboutNutriCycleScreen } from '../screens/AboutNutriCycleScreen';
 import MachineLobbyScreen from '../screens/MachineLobbyScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
+import { TermsAndConditionsScreen } from '../screens/TermsAndConditionsScreen';
+import { PrivacyNoticeScreen } from '../screens/PrivacyNoticeScreen';
 import AddMachineScreen from '../screens/AddMachineScreen';
 import NewBatchScreen from '../screens/NewBatchScreen';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -65,8 +68,11 @@ export default function RootNavigator() {
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="AboutNutriCycle" component={AboutNutriCycleScreen} />
         <Stack.Screen name="Machines" component={MachineLobbyScreen} />
         <Stack.Screen name="Lobby" component={MachineLobbyScreen} />
+          <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+          <Stack.Screen name="PrivacyNotice" component={PrivacyNoticeScreen} />
         <Stack.Screen 
           name="AddMachine" 
           component={AddMachineScreen}

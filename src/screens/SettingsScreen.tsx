@@ -44,6 +44,16 @@ export const SettingsScreen = () => {
     ]);
   };
 
+  const handleTabPress = (tabKey: string) => {
+    if (tabKey === 'Machines') {
+      navigation.navigate('Lobby');
+    } else if (tabKey === 'Reports') {
+      navigation.navigate('Dashboard');
+    } else if (tabKey === 'History') {
+      navigation.navigate('History');
+    }
+    // Settings tab is current tab, do nothing
+  };
 
   const SettingRow = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <TouchableOpacity style={styles.settingRow} onPress={onPress}>
@@ -86,17 +96,17 @@ export const SettingsScreen = () => {
             <View style={styles.divider} />
             <SettingRow 
               label="About NutriCycle" 
-              onPress={() => Alert.alert('About NutriCycle', 'NutriCycle v1.0.0\n\nAn IoT and AI-powered system for converting vegetable waste into poultry feed and compost.')}
+              onPress={() => navigation.navigate('AboutNutriCycle')}
             />
             <View style={styles.divider} />
             <SettingRow 
               label="Terms & Conditions" 
-              onPress={() => Alert.alert('Terms & Conditions', 'Please review our terms and conditions in the app settings or contact support.')}
+                onPress={() => navigation.navigate('TermsAndConditions')}
             />
             <View style={styles.divider} />
             <SettingRow 
               label="Privacy Notice" 
-              onPress={() => Alert.alert('Privacy Notice', 'Your privacy is important to us. Please contact support for details.')}
+                onPress={() => navigation.navigate('PrivacyNotice')}
             />
           </View>
         </View>

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -23,6 +24,14 @@ import { RootStackParamList } from '../navigation/types';
 
 type ChangePasswordScreenNavigationProp = NavigationProp<RootStackParamList, 'Dashboard'>;
 
+interface PasswordRequirements {
+  minLength: boolean;
+  hasUppercase: boolean;
+  hasLowercase: boolean;
+  hasSpecialChar: boolean;
+  hasNumeric: boolean;
+}
+
 export const ChangePasswordScreen = () => {
   const navigation = useNavigation<ChangePasswordScreenNavigationProp>();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -33,7 +42,68 @@ export const ChangePasswordScreen = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+  const [showPasswordMismatch, setShowPasswordMismatch] = useState(false);
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  const validatePasswordRequirements = (pwd: string): PasswordRequirements => {
+    return {
+      minLength: pwd.length >= 8,
+      hasUppercase: /[A-Z]/.test(pwd),
+      hasLowercase: /[a-z]/.test(pwd),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd),
+      hasNumeric: /[0-9]/.test(pwd),
+    };
+  };
+
+  const passwordRequirements = validatePasswordRequirements(newPassword);
+  const allRequirementsMet = Object.values(passwordRequirements).every(Boolean);
+
+  const sendPasswordChangeEmail = async (toEmail: string) => {
+    const brevoKey = process.env.EXPO_PUBLIC_BREVO_API_KEY || process.env.BREVO_API_KEY;
+    if (!brevoKey) {
+      throw new Error('Missing Brevo API key');
+    }
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': brevoKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'NutriCycle', email: 'micodelacruz519@gmail.com' },
+        to: [{ email: toEmail }],
+        subject: 'NutriCycle: Password Changed',
+        htmlContent: `
+          <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px;">
+                <h2 style="color: #1F5F2A; margin-bottom: 20px;">Password Change Confirmation</h2>
+                <p style="font-size: 16px; color: #333; margin-bottom: 16px;">
+                  Your NutriCycle account password was changed successfully.
+                </p>
+                <p style="font-size: 14px; color: #666; margin-bottom: 12px;">
+                  If you did not make this change, please reset your password immediately from the Login screen and contact support at nutricycle.bscs4a.2025@gmail.com.
+                </p>
+                <div style="background-color: #FBF6C8; padding: 14px; border-radius: 8px;">
+                  <p style="margin: 0; font-size: 14px; color: #1F5F2A;">
+                    Time: ${new Date().toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const msg = await response.text();
+      throw new Error(msg || 'Failed to send password change email');
+    }
+  };
 
   useEffect(() => {
     if (loading) {
@@ -64,12 +134,13 @@ export const ChangePasswordScreen = () => {
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
+      setShowPasswordMismatch(true);
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    // Enforce strong password requirements (8+ chars, upper, lower, number, special)
+    if (!allRequirementsMet) {
+      setShowPasswordRequirements(true);
       return;
     }
 
@@ -91,6 +162,11 @@ export const ChangePasswordScreen = () => {
 
       // Update password
       await updatePassword(user, newPassword);
+      try {
+        await sendPasswordChangeEmail(user.email);
+      } catch (e) {
+        // Optional: keep silent on email failure to not block UX
+      }
       setShowSuccessModal(true);
     } catch (error: any) {
       let errorMessage = 'Failed to update password';
@@ -233,13 +309,55 @@ export const ChangePasswordScreen = () => {
         </View>
       )}
 
+      {/* Password Requirements Modal */}
+      <Modal visible={showPasswordRequirements} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Password Requirements</Text>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalText}>
+                Your password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character.
+              </Text>
+              <RequirementRow met={passwordRequirements.minLength} text="At least 8 characters" />
+              <RequirementRow met={passwordRequirements.hasUppercase} text="Uppercase character (A-Z)" />
+              <RequirementRow met={passwordRequirements.hasLowercase} text="Lowercase character (a-z)" />
+              <RequirementRow met={passwordRequirements.hasNumeric} text="Numeric character (0-9)" />
+              <RequirementRow met={passwordRequirements.hasSpecialChar} text="Special character (!@#$%...)" />
+            </ScrollView>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowPasswordRequirements(false)}>
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Password Mismatch Modal */}
+      <Modal visible={showPasswordMismatch} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitleError}>Passwords Do Not Match</Text>
+            <View style={styles.modalBody}>
+              <View style={styles.errorIconContainer}>
+                <Text style={styles.errorIcon}>⚠️</Text>
+              </View>
+              <Text style={styles.errorMessage}>
+                The new password and confirm password fields do not match. Please ensure both passwords are identical.
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowPasswordMismatch(false)}>
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {showSuccessModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalCheckCircle}>
               <Text style={styles.modalCheckMark}>✓</Text>
             </View>
-            <Text style={styles.modalTitle}>Password Reset!</Text>
+            <Text style={styles.modalSuccessTitle}>Password Reset!</Text>
             <Text style={styles.modalSubtitle}>Your password has been changed successfully.</Text>
             <TouchableOpacity
               style={styles.modalButton}
@@ -394,7 +512,7 @@ const styles = StyleSheet.create({
     color: colors.cardWhite,
     fontWeight: '700',
   },
-  modalTitle: {
+  modalSuccessTitle: {
     fontSize: 22,
     fontWeight: '800',
     color: colors.primaryText,
@@ -435,4 +553,90 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  // Reuse modal styles similar to SignUp
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primaryText,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalTitleError: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#D32F2F',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalBody: {
+    marginBottom: 16,
+  },
+  errorIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorIcon: {
+    fontSize: 48,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: colors.primaryText,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 14,
+    color: colors.primaryText,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  // Requirement rows
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requirementCheckmark: {
+    fontSize: 16,
+    color: '#999',
+    marginRight: 8,
+    fontWeight: 'bold',
+    width: 20,
+  },
+  requirementCheckmarkMet: {
+    color: colors.primary,
+  },
+  requirementCheckmarkUnmet: {
+    color: '#D32F2F',
+  },
+  requirementText: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
+  },
+  requirementTextMet: {
+    color: colors.primaryText,
+    fontWeight: '500',
+  },
+  requirementTextUnmet: {
+    color: '#D32F2F',
+    fontWeight: '500',
+  },
 });
+
+const RequirementRow = ({ met, text }: { met: boolean; text: string }) => (
+  <View style={styles.requirementRow}>
+    <Text style={[
+      styles.requirementCheckmark,
+      met ? styles.requirementCheckmarkMet : styles.requirementCheckmarkUnmet,
+    ]}>
+      {met ? '✓' : '✕'}
+    </Text>
+    <Text style={[
+      styles.requirementText,
+      met ? styles.requirementTextMet : styles.requirementTextUnmet,
+    ]}>
+      {text}
+    </Text>
+  </View>
+);
