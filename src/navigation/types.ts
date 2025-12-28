@@ -16,9 +16,12 @@ export type RootStackParamList = {
   Settings: undefined;
   ChangePassword: undefined;
   Notifications: undefined;
-    History: undefined;
+  History: undefined;
+  AboutNutriCycle: undefined;
   AddMachine: undefined;
   NewBatch: undefined;
-  BatchSession: undefined;
-  Summary: undefined;
+    TermsAndConditions: undefined;
+    PrivacyNotice: undefined;
+    BatchSession: undefined;
+    Summary: undefined;
 };
