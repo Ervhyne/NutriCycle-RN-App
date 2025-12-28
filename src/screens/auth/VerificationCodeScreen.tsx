@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,6 +14,7 @@ import {
   Easing,
   Image,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp, useRoute, RouteProp } from '@react-navigation/native';
 import { ChevronLeft } from 'lucide-react-native';
 import { sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -57,6 +57,7 @@ export const VerificationCodeScreen = () => {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
+  const insets = useSafeAreaInsets();
 
   const handleCodeChange = (text: string, index: number) => {
     if (text.length > 1) {
@@ -176,12 +177,13 @@ export const VerificationCodeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
             <TouchableOpacity
               style={styles.backButton}

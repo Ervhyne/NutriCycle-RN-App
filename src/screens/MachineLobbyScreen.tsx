@@ -17,7 +17,7 @@ import MachineIcon from '../components/MachineIcon';
 import { useMachineStore } from '../stores/machineStore';
 import { Machine } from '../types';
 import { colors } from '../theme/colors';
-import BottomNavigation, { NAV_HEIGHT } from '../components/BottomNavigation';
+import { NAV_HEIGHT } from '../components/BottomNavigation';
 
 
 
@@ -168,10 +168,7 @@ export default function MachineLobbyScreen({ navigation }: any) {
         <Plus size={20} color={colors.cardWhite} />
       </TouchableOpacity>
 
-      {/* Bottom Navigation (separated component) */}
-      <BottomNavigation onTabPress={(tabKey) => {
-        try { navigation.navigate(tabKey); } catch (e) { console.warn(`Navigation target '${tabKey}' may not exist.`); }
-      }} />
+
     </SafeAreaView>
   );
 }
