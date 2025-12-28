@@ -49,7 +49,7 @@ export const SettingsScreen = () => {
     } else if (tabKey === 'Reports') {
       navigation.navigate('Dashboard');
     } else if (tabKey === 'History') {
-      Alert.alert('History', 'History feature coming soon');
+      navigation.navigate('History');
     }
     // Settings tab is current tab, do nothing
   };

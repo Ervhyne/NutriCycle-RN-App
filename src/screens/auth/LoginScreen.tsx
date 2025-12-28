@@ -14,6 +14,7 @@ import {
   Image,
   Animated,
   Easing,
+  Modal,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -30,6 +31,8 @@ export const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const spinValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -55,7 +58,8 @@ export const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+      setErrorMessage('Please enter both email and password');
+      setShowErrorModal(true);
       return;
     }
 
@@ -67,17 +71,18 @@ export const LoginScreen = () => {
         routes: [{ name: 'Lobby' }],
       });
     } catch (error: any) {
-      let errorMessage = 'Failed to login';
+      let errorMsg = 'Failed to login';
       if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
+        errorMsg = 'Invalid email address';
       } else if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email';
+        errorMsg = 'No account found with this email';
       } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
+        errorMsg = 'Incorrect password';
       } else if (error.code === 'auth/invalid-credential') {
-        errorMessage = 'Invalid email or password';
+        errorMsg = 'Invalid email or password';
       }
-      Alert.alert('Login Failed', errorMessage);
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -180,6 +185,25 @@ export const LoginScreen = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      <Modal visible={showErrorModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitleError}>Login Failed</Text>
+            <View style={styles.modalBody}>
+              <View style={styles.errorIconContainer}>
+                <Text style={styles.errorIcon}>⚠️</Text>
+              </View>
+              <Text style={styles.errorMessage}>
+                {errorMessage}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowErrorModal(false)}>
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {loading && (
         <View style={styles.loadingOverlay}>
           <Animated.Image
@@ -233,6 +257,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: 'center',
     fontFamily: 'System',
+    fontWeight: '600',
   },
   form: {
     width: '100%',
@@ -240,10 +265,11 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
+    
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.primaryText,
     marginBottom: 8,
     fontFamily: 'System',
@@ -340,5 +366,53 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#00000070',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    maxHeight: '85%',
+    backgroundColor: colors.creamBackground,
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitleError: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#D32F2F',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalBody: {
+    marginBottom: 16,
+  },
+  errorIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  errorIcon: {
+    fontSize: 48,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: colors.primaryText,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: colors.cardWhite,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
