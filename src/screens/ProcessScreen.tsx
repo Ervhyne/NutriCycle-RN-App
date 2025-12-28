@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
+import ScreenTitle from '../components/ScreenTitle';
 
 export default function ProcessScreen({ navigation }: any) {
   const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch } = useMachineStore();
@@ -103,7 +104,7 @@ export default function ProcessScreen({ navigation }: any) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>Process</Text>
+          <ScreenTitle>Process</ScreenTitle>
         </View>
 
         <View style={styles.section}>

@@ -3,6 +3,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
+import ScreenTitle from '../components/ScreenTitle';
 
 
 export default function NewBatchScreen({ navigation }: any) {
@@ -39,7 +40,7 @@ export default function NewBatchScreen({ navigation }: any) {
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom, flex: 1 }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom, flexGrow: 1, justifyContent: 'space-between' }]} keyboardShouldPersistTaps="handled">
         <View>
-          <Text style={styles.title}>New Batch</Text>
+          <ScreenTitle>New Batch</ScreenTitle>
 
           <Text style={styles.subtitle}>Batch ID: <Text style={{ fontWeight: '700' }}>{generatedId}</Text></Text>
 

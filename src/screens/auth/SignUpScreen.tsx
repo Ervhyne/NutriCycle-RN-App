@@ -21,6 +21,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { colors } from '../../theme/colors';
+import ScreenTitle from '../../components/ScreenTitle';
 import { RootStackParamList } from '../../navigation/types';
 
 type SignUpScreenNavigationProp = NavigationProp<RootStackParamList, 'SignUp'>;
@@ -176,7 +177,7 @@ export const SignUpScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <SafeAreaView style={[styles.container, { paddingTop: Math.min(insets.top, 12), paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
@@ -185,7 +186,7 @@ export const SignUpScreen = () => {
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
           <View style={styles.content}>
             <Image source={require('../../../assets/Logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Create Account</Text>
+            <ScreenTitle>Create Account</ScreenTitle>
             <Text style={styles.subtitle}>Join the NutriCycle.</Text>
 
             <View style={styles.form}>

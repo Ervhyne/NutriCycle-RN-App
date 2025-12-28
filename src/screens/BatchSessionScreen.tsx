@@ -15,7 +15,7 @@ export default function BatchSessionScreen({ navigation, route }: any) {
         <View style={{ width: 60 }} />
       </View>
 
-      <View style={styles.navigatorWrap}>
+      <View style={styles.contentWrap}>
         <BatchSessionNavigator />
       </View>
     </SafeAreaView>
@@ -23,10 +23,10 @@ export default function BatchSessionScreen({ navigation, route }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.creamBackground },
+  container: { flex: 1, backgroundColor: colors.cardWhite },
   header: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, backgroundColor: colors.cardWhite, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { paddingVertical: 8, paddingHorizontal: 12 },
   backText: { color: colors.primary, fontWeight: '700' },
   title: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  navigatorWrap: { flex: 1 },
+  contentWrap: { flex: 1, backgroundColor: colors.creamBackground, paddingTop: 12 },
 });
