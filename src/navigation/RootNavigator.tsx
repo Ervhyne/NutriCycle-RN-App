@@ -5,7 +5,11 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignUpScreen } from '../screens/auth/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { VerificationCodeScreen } from '../screens/auth/VerificationCodeScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import MachineLobbyScreen from '../screens/MachineLobbyScreen';
+import { HistoryScreen } from '../screens/HistoryScreen';
 import AddMachineScreen from '../screens/AddMachineScreen';
 import NewBatchScreen from '../screens/NewBatchScreen';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -20,6 +24,7 @@ export default function RootNavigator() {
         initialRouteName="Login"
         screenOptions={{
           headerShown: false,
+          animationDuration: 300,
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -27,6 +32,10 @@ export default function RootNavigator() {
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="VerificationCode" component={VerificationCodeScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Machines" component={MachineLobbyScreen} />
         <Stack.Screen name="Lobby" component={MachineLobbyScreen} />
         <Stack.Screen 
