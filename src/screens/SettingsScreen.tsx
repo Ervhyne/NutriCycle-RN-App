@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { colors } from '../theme/colors';
+import ScreenTitle from '../components/ScreenTitle';
 import { RootStackParamList } from '../navigation/types';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
 
@@ -63,12 +64,12 @@ export const SettingsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: Math.min(insets.top, 12), paddingBottom: insets.bottom }]}>
+    <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <ScreenTitle>Settings</ScreenTitle>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: 0, paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Account Settings Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Settings</Text>
@@ -133,18 +134,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.creamBackground,
   },
   header: {
-    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.primaryText,
   },
   scrollContent: {
     paddingTop: 16,

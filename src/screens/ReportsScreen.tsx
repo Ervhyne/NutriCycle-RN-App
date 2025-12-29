@@ -125,42 +125,9 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={[styles.content, { paddingTop: 8 + insets.top, paddingBottom: 24 + insets.bottom }]}>
-        <View style={[styles.header, { paddingTop: Math.min(insets.top, 12) }]}> 
-          <ScreenTitle>Reports</ScreenTitle>
-          <View style={styles.filterWrapper}>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setIsFilterOpen((open) => !open)}
-              activeOpacity={0.8}
-            >
-              <Filter color={colors.primaryText} size={18} />
-              <Text style={styles.filterLabel}>{rangeLabel}</Text>
-            </TouchableOpacity>
-
-            {isFilterOpen ? (
-              <View style={styles.filterMenu}>
-                {(
-                  [
-                    { key: 'week', label: 'Week' },
-                    { key: 'month', label: 'Month' },
-                    { key: 'year', label: 'Year' },
-                  ] as { key: RangeKey; label: string }[]
-                ).map((option) => (
-                  <TouchableOpacity
-                    key={option.key}
-                    style={[styles.filterMenuItem, range === option.key && styles.filterMenuItemActive]}
-                    onPress={() => handleSelectRange(option.key)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.filterMenuText, range === option.key && styles.filterMenuTextActive]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : null}
-          </View>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + insets.bottom }}>
+        <View style={styles.header}>
+          <ScreenTitle style={{ textAlign: 'center' }}>Reports</ScreenTitle>
         </View>
 
         <Text style={styles.sectionTitle}>Outputs</Text>
@@ -287,14 +254,7 @@ export default function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.creamBackground },
-  content: { flex: 1, paddingHorizontal: 16 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    overflow: 'visible',
-    zIndex: 10,
-  },
+  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: colors.primary, marginLeft: 8 },
   filterWrapper: { position: 'relative', overflow: 'visible', zIndex: 10 },
   filterButton: {
