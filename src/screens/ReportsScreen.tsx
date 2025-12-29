@@ -22,9 +22,9 @@ export default function ReportsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 8 + insets.top, paddingBottom: 80 + insets.bottom }}>
-        <View style={[styles.header, { paddingTop: Math.min(insets.top, 12) }] }>
-          <ScreenTitle>Reports</ScreenTitle>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + insets.bottom }}>
+        <View style={styles.header}>
+          <ScreenTitle style={{ textAlign: 'center' }}>Reports</ScreenTitle>
         </View>
 
         <Text style={styles.sectionTitle}>Weekly Throughput</Text>
@@ -63,7 +63,7 @@ export default function ReportsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.creamBackground },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: colors.primary, marginLeft: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primaryText, marginTop: 8, marginLeft: 8 },
   chart: { borderRadius: 12, marginTop: 8, backgroundColor: colors.cardWhite, padding: 8 },
