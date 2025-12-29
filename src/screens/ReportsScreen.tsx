@@ -197,7 +197,7 @@ export default function ReportsScreen() {
             </View>
           ))}
         </ScrollView>
-      </View>
+      </ScrollView>
 
       <Modal
         visible={showHistoryModal}
