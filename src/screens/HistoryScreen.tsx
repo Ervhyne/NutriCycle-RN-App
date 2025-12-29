@@ -14,6 +14,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Calendar, Clock } from 'lucide-react-native';
 import { colors } from '../theme/colors';
+import ScreenTitle from '../components/ScreenTitle';
 import { RootStackParamList } from '../navigation/types';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
 
@@ -86,12 +87,12 @@ export const HistoryScreen = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: Math.min(insets.top, 12), paddingBottom: insets.bottom }]}>
+    <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Batch History</Text>
+        <ScreenTitle>Batch History</ScreenTitle>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: 0, paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Filter Section */}
         <View style={styles.filterContainer}>
           <TouchableOpacity style={styles.filterButton} onPress={handleOpenPicker}>
@@ -179,18 +180,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.creamBackground,
   },
   header: {
-    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: Platform.OS === 'android' ? 1 : 0,
-    borderBottomColor: '#E5E5E5',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.primaryText,
   },
   scrollContent: {
     paddingTop: 16,
