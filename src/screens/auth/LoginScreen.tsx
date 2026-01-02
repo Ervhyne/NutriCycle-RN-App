@@ -14,15 +14,18 @@ import {
   Animated,
   Easing,
   Modal,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenTitle from '../../components/ScreenTitle';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import { RootStackParamList } from '../../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 type LoginScreenNavigationProp = NavigationProp<RootStackParamList, 'Login'>;
 
@@ -34,7 +37,26 @@ export const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [existingUserEmail, setExistingUserEmail] = useState('');
+  const [pendingLoginCredentials, setPendingLoginCredentials] = useState<{email: string, password: string} | null>(null);
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  // Disable back button when session modal is showing
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (showSessionModal) {
+          return true; // Prevent back navigation
+        }
+        return false;
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => backHandler.remove();
+    }, [showSessionModal])
+  );
 
   useEffect(() => {
     if (loading) {
@@ -66,27 +88,154 @@ export const LoginScreen = () => {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Generate or get unique device/session ID
+      let deviceId = await AsyncStorage.getItem('deviceSessionId');
+      if (!deviceId) {
+        deviceId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem('deviceSessionId', deviceId);
+      }
+
+      // Sign in to Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const userId = userCredential.user.uid;
+
+      // Check for existing active session in Firestore
+      const sessionRef = doc(db, 'activeSessions', userId);
+      const sessionDoc = await getDoc(sessionRef);
+
+      if (sessionDoc.exists()) {
+        const sessionData = sessionDoc.data();
+        const existingDeviceId = sessionData.deviceId;
+
+        if (existingDeviceId && existingDeviceId !== deviceId) {
+          // Conflict: another device is logged in
+          // Set a flag to prevent RootNavigator from auto-navigating
+          await AsyncStorage.setItem('showingSessionModal', 'true');
+          
+          // Keep user signed in temporarily - they'll choose to continue or cancel
+          setExistingUserEmail(email.trim().toLowerCase());
+          setPendingLoginCredentials({ email: email.trim().toLowerCase(), password });
+          setLoading(false);
+          
+          // Use setTimeout to ensure state updates and modal renders properly
+          setTimeout(() => {
+            setShowSessionModal(true);
+          }, 100);
+          
+          return;
+        }
+      }
+
+      // No conflict — proceed with login
+      await setDoc(sessionRef, {
+        userId,
+        email: email.trim().toLowerCase(),
+        deviceId,
+        loginTime: serverTimestamp(),
+        lastActive: serverTimestamp(),
+      });
+
+      await Promise.all([
+        AsyncStorage.setItem('loggedInUserEmail', email.trim().toLowerCase()),
+        AsyncStorage.setItem('loggedInUserId', userId),
+      ]);
+
+      setLoading(false);
       navigation.reset({
         index: 0,
         routes: [{ name: 'Lobby' }],
       });
     } catch (error: any) {
+      setLoading(false);
       let errorMsg = 'Failed to login';
-      if (error.code === 'auth/invalid-email') {
-        errorMsg = 'Invalid email address';
-      } else if (error.code === 'auth/user-not-found') {
-        errorMsg = 'No account found with this email';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMsg = 'Incorrect password';
-      } else if (error.code === 'auth/invalid-credential') {
-        errorMsg = 'Invalid email or password';
-      }
+      if (error.code === 'auth/invalid-email') errorMsg = 'Invalid email address';
+      else if (error.code === 'auth/user-not-found') errorMsg = 'No account found with this email';
+      else if (error.code === 'auth/wrong-password') errorMsg = 'Incorrect password';
+      else if (error.code === 'auth/invalid-credential') errorMsg = 'Invalid email or password';
+
       setErrorMessage(errorMsg);
       setShowErrorModal(true);
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const handleForceLogin = async () => {
+    if (!pendingLoginCredentials) return;
+
+    setShowSessionModal(false);
+    setLoading(true);
+
+    try {
+      // Clear the flag now that user chose to continue
+      await AsyncStorage.removeItem('showingSessionModal');
+      
+      // User is already authenticated from handleLogin
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('No authenticated user');
+      }
+
+      const userId = currentUser.uid;
+
+      // Get the device ID
+      let deviceId = await AsyncStorage.getItem('deviceSessionId');
+      if (!deviceId) {
+        deviceId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem('deviceSessionId', deviceId);
+      }
+
+      // Force update the session - this invalidates other devices
+      const sessionRef = doc(db, 'activeSessions', userId);
+      await setDoc(sessionRef, {
+        userId,
+        email: pendingLoginCredentials.email,
+        deviceId,
+        loginTime: serverTimestamp(),
+        lastActive: serverTimestamp(),
+        forcedLogin: true,
+      });
+
+      // Save user info locally
+      await Promise.all([
+        AsyncStorage.setItem('loggedInUserEmail', pendingLoginCredentials.email),
+        AsyncStorage.setItem('loggedInUserId', userId),
+      ]);
+
+      setPendingLoginCredentials(null);
+      setLoading(false);
+
+      // Navigate to Lobby
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Lobby' }],
+      });
+    } catch (error: any) {
+      setLoading(false);
+      setPendingLoginCredentials(null);
+
+      let errorMsg = 'Failed to continue login';
+      if (error.code) {
+        if (error.code === 'auth/invalid-email') errorMsg = 'Invalid email address';
+        else if (error.code === 'auth/user-not-found') errorMsg = 'No account found';
+        else if (error.code === 'auth/wrong-password') errorMsg = 'Incorrect password';
+        else if (error.code === 'auth/invalid-credential') errorMsg = 'Invalid credentials';
+      }
+
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleCancelForceLogin = async () => {
+    setShowSessionModal(false);
+    setPendingLoginCredentials(null);
+    setEmail('');
+    setPassword('');
+
+    // Clear the flag
+    await AsyncStorage.removeItem('showingSessionModal');
+    
+    // Sign out any temporary auth state
+    signOut(auth).catch((err) => console.error('Sign out error:', err));
   };
 
   return (
@@ -151,7 +300,7 @@ export const LoginScreen = () => {
                 </View>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.forgotPasswordContainer}
                 onPress={() => navigation.navigate('ForgotPassword')}
                 disabled={loading}
@@ -175,7 +324,7 @@ export const LoginScreen = () => {
             {/* Sign Up Link */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('SignUp')}
                 disabled={loading}
               >
@@ -186,6 +335,7 @@ export const LoginScreen = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Error Modal */}
       <Modal visible={showErrorModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -194,9 +344,7 @@ export const LoginScreen = () => {
               <View style={styles.errorIconContainer}>
                 <Text style={styles.errorIcon}>⚠️</Text>
               </View>
-              <Text style={styles.errorMessage}>
-                {errorMessage}
-              </Text>
+              <Text style={styles.errorMessage}>{errorMessage}</Text>
             </View>
             <TouchableOpacity style={styles.modalButton} onPress={() => setShowErrorModal(false)}>
               <Text style={styles.modalButtonText}>Close</Text>
@@ -205,6 +353,38 @@ export const LoginScreen = () => {
         </View>
       </Modal>
 
+      {/* Active Session Detected Modal */}
+      <Modal visible={showSessionModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitleWarning}>Active Session Detected</Text>
+            <View style={styles.modalBody}>
+              <View style={styles.warningIconContainer}>
+                <Text style={styles.warningIcon}>🔒</Text>
+              </View>
+              <Text style={styles.sessionMessage}>
+                This account ({existingUserEmail}) is currently logged in on another device.
+              </Text>
+              <Text style={styles.sessionSubMessage}>
+                Only one device can be logged in at a time. Continuing will log out the other device.
+              </Text>
+            </View>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={handleCancelForceLogin}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButton} onPress={handleForceLogin}>
+                <Text style={styles.modalButtonText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Full-screen Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
           <Animated.Image
@@ -244,20 +424,11 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.primaryText,
-    marginBottom: 8,
-    textAlign: 'center',
-    fontFamily: 'System',
-  },
   subtitle: {
     fontSize: 16,
     color: colors.mutedText,
     marginBottom: 32,
     textAlign: 'center',
-    fontFamily: 'System',
     fontWeight: '600',
   },
   form: {
@@ -266,14 +437,12 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
-    
   },
   label: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.primaryText,
     marginBottom: 8,
-    fontFamily: 'System',
   },
   input: {
     backgroundColor: colors.cardWhite,
@@ -283,7 +452,6 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     borderWidth: 1,
     borderColor: colors.border,
-    fontFamily: 'System',
   },
   passwordInputWrapper: {
     flexDirection: 'row',
@@ -296,13 +464,12 @@ const styles = StyleSheet.create({
   passwordInput: {
     flex: 1,
     padding: 14,
-    fontFamily: 'System',
     fontSize: 16,
     color: colors.primaryText,
   },
   eyeIcon: {
-    paddingRight: 14,
     padding: 10,
+    paddingRight: 14,
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
@@ -328,7 +495,6 @@ const styles = StyleSheet.create({
     color: colors.cardWhite,
     fontSize: 16,
     fontWeight: '700',
-    fontFamily: 'System',
   },
   footer: {
     flexDirection: 'row',
@@ -339,13 +505,11 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
     color: colors.mutedText,
-    fontFamily: 'System',
   },
   signUpLink: {
     fontSize: 14,
     color: colors.primary,
     fontWeight: '700',
-    fontFamily: 'System',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -370,17 +534,17 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: '#00000070',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 20,
   },
   modalCard: {
-    width: '100%',
-    maxHeight: '85%',
+    width: '90%',
+    maxWidth: 400,
     backgroundColor: colors.creamBackground,
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
   },
   modalTitleError: {
     fontSize: 18,
@@ -389,8 +553,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  modalBody: {
+  modalTitleWarning: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F57C00',
+    textAlign: 'center',
     marginBottom: 16,
+  },
+  modalBody: {
+    marginBottom: 20,
   },
   errorIconContainer: {
     alignItems: 'center',
@@ -399,21 +570,55 @@ const styles = StyleSheet.create({
   errorIcon: {
     fontSize: 48,
   },
+  warningIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  warningIcon: {
+    fontSize: 48,
+  },
   errorMessage: {
     fontSize: 14,
     color: colors.primaryText,
     lineHeight: 20,
     textAlign: 'center',
   },
+  sessionMessage: {
+    fontSize: 14,
+    color: colors.primaryText,
+    lineHeight: 20,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  sessionSubMessage: {
+    fontSize: 13,
+    color: colors.mutedText,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   modalButton: {
+    flex: 1,
     backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
   },
+  modalButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
   modalButtonText: {
     color: colors.cardWhite,
     fontSize: 16,
     fontWeight: '700',
+  },
+  modalButtonTextSecondary: {
+    color: colors.primary,
   },
 });

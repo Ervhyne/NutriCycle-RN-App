@@ -18,10 +18,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, NavigationProp, useRoute, RouteProp } from '@react-navigation/native';
 import { ChevronLeft } from 'lucide-react-native';
 import { sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
 import { colors } from '../../theme/colors';
 import ScreenTitle from '../../components/ScreenTitle';
 import { RootStackParamList } from '../../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 type VerificationCodeScreenNavigationProp = NavigationProp<RootStackParamList, 'VerificationCode'>;
 type VerificationCodeScreenRouteProp = RouteProp<RootStackParamList, 'VerificationCode'>;
@@ -102,7 +104,29 @@ export const VerificationCodeScreen = () => {
         setShowSuccessModal(true);
       } else if (purpose === 'signup') {
         // Signup flow - create account after verification
-        await createUserWithEmailAndPassword(auth, email, password!);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password!);
+        const userId = userCredential.user.uid;
+        
+        // Generate a unique device/session ID
+        let deviceId = await AsyncStorage.getItem('deviceSessionId');
+        if (!deviceId) {
+          deviceId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          await AsyncStorage.setItem('deviceSessionId', deviceId);
+        }
+        
+        // Create session in Firestore
+        const sessionRef = doc(db, 'activeSessions', userId);
+        await setDoc(sessionRef, {
+          userId: userId,
+          email: email,
+          deviceId: deviceId,
+          loginTime: serverTimestamp(),
+          lastActive: serverTimestamp(),
+        });
+        
+        // Store the logged-in user's email and ID
+        await AsyncStorage.setItem('loggedInUserEmail', email);
+        await AsyncStorage.setItem('loggedInUserId', userId);
         setShowSuccessModal(true);
       }
     } catch (error: any) {

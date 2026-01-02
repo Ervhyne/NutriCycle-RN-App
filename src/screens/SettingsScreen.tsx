@@ -11,11 +11,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
 import { RootStackParamList } from '../navigation/types';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, deleteDoc } from 'firebase/firestore';
 
 type SettingsScreenNavigationProp = NavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -31,14 +33,31 @@ export const SettingsScreen = () => {
         style: 'destructive',
         onPress: async () => {
           try {
+            const userId = auth.currentUser?.uid;
+            
+            // Delete session from Firestore
+            if (userId) {
+              try {
+                const sessionRef = doc(db, 'activeSessions', userId);
+                await deleteDoc(sessionRef);
+              } catch (firestoreError) {
+                console.warn('Failed to delete session from Firestore:', firestoreError);
+                // Continue with logout even if Firestore fails
+              }
+            }
+            
             await signOut(auth);
+            // Clear stored session data
+            await AsyncStorage.removeItem('loggedInUserEmail');
+            await AsyncStorage.removeItem('loggedInUserId');
             // Reset navigation stack so back button won't show Settings
             navigation.reset({
               index: 0,
               routes: [{ name: 'Login' }],
             });
           } catch (error) {
-            Alert.alert('Error', 'Failed to log out');
+            console.error('Logout error:', error);
+            Alert.alert('Error', 'Failed to log out. Please try again.');
           }
         },
       },
