@@ -4,34 +4,40 @@ import { colors } from '../theme/colors';
 import { MachineTelemetry } from '../types';
 
 export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemetry | null }) {
+  const motorState = telemetry?.motorState ?? 'idle';
+  const rpm = telemetry?.grinderRPM ?? '--';
+  const temp = telemetry?.dryerTemperature ?? '--';
+  const humidity = telemetry?.humidity ?? '--';
+  const diverter = telemetry?.diverterPosition ?? '--';
+  const door = telemetry?.doorState ?? '--';
+
   return (
     <View style={styles.container}>
-      <View style={styles.row}>
-        <View style={styles.item}>
+      <View style={styles.topRow}>
+        <View style={styles.primaryMetric}>
           <Text style={styles.label}>Motor</Text>
-          <Text style={styles.value}>{telemetry?.motorState ?? 'idle'}</Text>
+          <View style={styles.pill}>
+            <Text style={styles.pillValue}>{motorState}</Text>
+          </View>
+          <Text style={styles.subLabel}>Diverter: <Text style={styles.subValue}>{diverter}</Text></Text>
         </View>
-        <View style={styles.item}>
+        <View style={styles.primaryMetric}>
           <Text style={styles.label}>RPM</Text>
-          <Text style={styles.value}>{telemetry?.grinderRPM ?? '--'}</Text>
-        </View>
-        <View style={styles.item}>
-          <Text style={styles.label}>Temp</Text>
-          <Text style={styles.value}>{telemetry?.dryerTemperature ?? '--'}°C</Text>
+          <Text style={styles.bigValue}>{rpm}</Text>
+          <Text style={styles.subLabel}>Door: <Text style={styles.subValue}>{door}</Text></Text>
         </View>
       </View>
-      <View style={styles.row}>
-        <View style={styles.item}>
-          <Text style={styles.label}>Humidity</Text>
-          <Text style={styles.value}>{telemetry?.humidity ?? '--'}%</Text>
+
+      <View style={styles.divider} />
+
+      <View style={styles.gridRow}>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Temp</Text>
+          <Text style={styles.gridValue}>{temp}°C</Text>
         </View>
-        <View style={styles.item}>
-          <Text style={styles.label}>Diverter</Text>
-          <Text style={styles.value}>{telemetry?.diverterPosition ?? '--'}</Text>
-        </View>
-        <View style={styles.item}>
-          <Text style={styles.label}>Door</Text>
-          <Text style={styles.value}>{telemetry?.doorState ?? '--'}</Text>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Humidity</Text>
+          <Text style={styles.gridValue}>{humidity}%</Text>
         </View>
       </View>
     </View>
@@ -40,34 +46,98 @@ export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemet
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.cardWhite,
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: colors.cardSurface,
+    padding: 16,
+    borderRadius: 16,
     marginHorizontal: 16,
     marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  row: {
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    columnGap: 12,
   },
-  item: {
+  primaryMetric: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: colors.softGreenSurface,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   label: {
     fontSize: 12,
     color: colors.mutedText,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
-  value: {
-    fontSize: 16,
+  pill: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.cardWhite,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    marginTop: 6,
+  },
+  pillValue: {
+    fontSize: 15,
     fontWeight: '700',
     color: colors.primaryText,
-    marginTop: 4,
+  },
+  bigValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.primary,
+    marginTop: 6,
+  },
+  subLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    color: colors.mutedText,
+  },
+  subValue: {
+    fontWeight: '700',
+    color: colors.primaryText,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.cardBorder,
+    marginVertical: 14,
+    opacity: 0.7,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  gridItem: {
+    flex: 1,
+    backgroundColor: colors.cardWhite,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+  },
+  gridLabel: {
+    fontSize: 12,
+    color: colors.mutedText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  gridValue: {
+    marginTop: 6,
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.primary,
   },
 });

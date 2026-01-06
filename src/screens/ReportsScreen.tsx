@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import ScreenTitle from '../components/ScreenTitle';
-import { Filter, Calendar, ChevronRight, ArrowLeft, ChevronLeft } from 'lucide-react-native';
+import HistoryDetailsModal from '../components/HistoryDetailsModal';
+import { Filter, Calendar, ChevronRight } from 'lucide-react-native';
+import { useMachineStore } from '../stores/machineStore';
 
 const screenWidth = Dimensions.get('window').width - 32;
 const cardWidth = screenWidth;
@@ -22,6 +24,7 @@ type CardConfig = {
 
 export default function ReportsScreen() {
   const insets = useSafeAreaInsets();
+  const { machines, batches } = useMachineStore();
   const [range, setRange] = useState<RangeKey>('week');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -66,35 +69,29 @@ export default function ReportsScreen() {
   const selectedLineData = useMemo(() => lineDataByRange[range], [lineDataByRange, range]);
   const selectedBarData = useMemo(() => barDataByRange[range], [barDataByRange, range]);
 
-  const mockCards: CardConfig[] = useMemo(
-    () => [
-      {
-        id: 'a',
-        title: 'Machine A - 85 kg',
+  const mockCards: CardConfig[] = useMemo(() => {
+    return machines.map((machine) => {
+      const machineBatches = batches.filter((b) => b.machineId === machine.id);
+      const totalOutput = machineBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      const recentHistory = machineBatches
+        .filter((b) => b.endTime)
+        .sort((a, b) => (b.endTime?.getTime() ?? 0) - (a.endTime?.getTime() ?? 0))
+        .slice(0, 3)
+        .map((b) => ({
+          date: b.endTime?.toLocaleDateString() ?? 'Unknown',
+          value: `${b.actualWeight ?? 0} kg`,
+        }));
+
+      return {
+        id: machine.id,
+        title: `${machine.name} - ${totalOutput} kg`,
         subtitle: 'Total Output',
         chartData: selectedLineData,
-        chartType: 'line',
-        history: [
-          { date: 'April 22', value: '23 kg' },
-          { date: 'April 21', value: '33 kg' },
-          { date: 'April 20', value: '29 kg' },
-        ],
-      },
-      {
-        id: 'b',
-        title: 'Machine B - 67 kg',
-        subtitle: 'Total Output',
-        chartData: selectedLineData,
-        chartType: 'line',
-        history: [
-          { date: 'April 22', value: '19 kg' },
-          { date: 'April 21', value: '27 kg' },
-          { date: 'April 20', value: '21 kg' },
-        ],
-      },
-    ],
-    [selectedBarData, selectedLineData],
-  );
+        chartType: 'line' as const,
+        history: recentHistory.length > 0 ? recentHistory : [{ date: 'No data', value: '0 kg' }],
+      };
+    });
+  }, [machines, batches, selectedLineData]);
 
   const handleSelectRange = (value: RangeKey) => {
     setRange(value);
@@ -199,55 +196,11 @@ export default function ReportsScreen() {
         </ScrollView>
       </ScrollView>
 
-      <Modal
+      <HistoryDetailsModal
         visible={showHistoryModal}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowHistoryModal(false)}
-      >
-        <SafeAreaView style={[styles.modalContainer, { paddingBottom: insets.bottom, paddingTop: Math.min(insets.top, 12) }]}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => setShowHistoryModal(false)}
-              style={styles.backButton}
-            >
-              <ChevronLeft size={28} color={colors.primaryText} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>History Details</Text>
-            <View style={{ width: 60 }} />
-          </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.modalContent}
-          >
-            {modalHistoryData.map((item, index) => (
-              <View key={index} style={styles.historyCard}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.batchBadge}>
-                    <Text style={styles.batchBadgeText}>{item.batch}</Text>
-                  </View>
-                  <Text style={styles.cardDate}>{item.date}</Text>
-                </View>
-
-                <View style={styles.cardDivider} />
-
-                <View style={styles.dataRow}>
-                  <View style={styles.dataItem}>
-                    <Text style={styles.dataLabel}>Feed Output</Text>
-                    <Text style={styles.dataValue}>{item.feedKg} kg</Text>
-                  </View>
-                  <View style={styles.dataSeparator} />
-                  <View style={styles.dataItem}>
-                    <Text style={styles.dataLabel}>Compost Output</Text>
-                    <Text style={styles.dataValue}>{item.compostKg} kg</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        data={modalHistoryData}
+        onClose={() => setShowHistoryModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -321,67 +274,4 @@ const styles = StyleSheet.create({
   historyLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   historyDate: { fontSize: 13, color: colors.primaryText },
   historyValue: { fontSize: 13, color: colors.primaryText, fontWeight: '700' },
-  modalContainer: { flex: 1, backgroundColor: colors.creamBackground },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: colors.creamBackground,
-    borderBottomWidth: 0,
-    position: 'relative',
-  },
-  backButtoniOS: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    gap: 4,
-  },
-  backButtonText: { fontSize: 16, fontWeight: '600', color: colors.primary },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-    position: 'absolute',
-    left: 16,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.primaryText, textAlign: 'center' },
-  modalContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 14, paddingBottom: 24 },
-  historyCard: {
-    backgroundColor: colors.cardWhite,
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  batchBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  batchBadgeText: { fontSize: 12, fontWeight: '700', color: colors.cardWhite },
-  cardDate: { fontSize: 14, fontWeight: '600', color: colors.mutedText },
-  cardDivider: { height: 1, backgroundColor: colors.cardBorder, marginBottom: 14 },
-  dataRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  dataItem: { flex: 1, alignItems: 'center' },
-  dataSeparator: { width: 1, height: 40, backgroundColor: colors.cardBorder, marginHorizontal: 12 },
-  dataLabel: { fontSize: 12, color: colors.mutedText, fontWeight: '600', marginBottom: 6 },
-  dataValue: { fontSize: 20, fontWeight: '700', color: colors.primary },
 });

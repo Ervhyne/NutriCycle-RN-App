@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, KeyRound, Bell, Mail, Info, FileText, ShieldCheck, User } from 'lucide-react-native';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { colors } from '../theme/colors';
@@ -75,12 +75,25 @@ export const SettingsScreen = () => {
     // Settings tab is current tab, do nothing
   };
 
-  const SettingRow = ({ label, onPress }: { label: string; onPress: () => void }) => (
-    <TouchableOpacity style={styles.settingRow} onPress={onPress}>
-      <Text style={styles.settingLabel}>{label}</Text>
+  const SettingItem = ({ label, onPress, icon: Icon }:
+    { label: string; onPress: () => void; icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>; }) => (
+    <TouchableOpacity style={styles.settingRow} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.settingLeft}>
+        <Icon size={18} color={colors.primary} strokeWidth={2} />
+        <Text style={styles.settingLabel}>{label}</Text>
+      </View>
       <ChevronRight size={20} color={colors.mutedText} strokeWidth={2} />
     </TouchableOpacity>
   );
+
+  const email = auth.currentUser?.email ?? '';
+  const displayName = auth.currentUser?.displayName ?? (email ? email.split('@')[0] : 'Account');
+  const initials = (displayName || 'A')
+    .split(' ')
+    .map((s) => s[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -89,19 +102,24 @@ export const SettingsScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: 0, paddingBottom: NAV_HEIGHT + 24 + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{displayName}</Text>
+            {!!email && <Text style={styles.profileEmail}>{email}</Text>}
+          </View>
+        </View>
+
         {/* Account Settings Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Settings</Text>
           <View style={styles.sectionContent}>
-            <SettingRow 
-              label="Change Password" 
-              onPress={() => navigation.navigate('ChangePassword')}
-            />
+            <SettingItem label="Change Password" icon={KeyRound} onPress={() => navigation.navigate('ChangePassword')} />
             <View style={styles.divider} />
-            <SettingRow 
-              label="Notifications" 
-              onPress={() => navigation.navigate('Notifications')}
-            />
+            <SettingItem label="Notifications" icon={Bell} onPress={() => navigation.navigate('Notifications')} />
           </View>
         </View>
 
@@ -109,34 +127,19 @@ export const SettingsScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support & Information</Text>
           <View style={styles.sectionContent}>
-            <SettingRow 
-              label="Contact Us" 
-              onPress={() => navigation.navigate('ContactUs')}
-            />
+            <SettingItem label="Contact Us" icon={Mail} onPress={() => navigation.navigate('ContactUs')} />
             <View style={styles.divider} />
-            <SettingRow 
-              label="About NutriCycle" 
-              onPress={() => navigation.navigate('AboutNutriCycle')}
-            />
+            <SettingItem label="About NutriCycle" icon={Info} onPress={() => navigation.navigate('AboutNutriCycle')} />
             <View style={styles.divider} />
-            <SettingRow 
-              label="Terms & Conditions" 
-                onPress={() => navigation.navigate('TermsAndConditions')}
-            />
+            <SettingItem label="Terms & Conditions" icon={FileText} onPress={() => navigation.navigate('TermsAndConditions')} />
             <View style={styles.divider} />
-            <SettingRow 
-              label="Privacy Notice" 
-                onPress={() => navigation.navigate('PrivacyNotice')}
-            />
+            <SettingItem label="Privacy Notice" icon={ShieldCheck} onPress={() => navigation.navigate('PrivacyNotice')} />
           </View>
         </View>
 
         {/* Log Out Button */}
         <View style={styles.logOutSection}>
-          <TouchableOpacity
-            style={styles.logOutButton}
-            onPress={handleLogOut}
-          >
+          <TouchableOpacity style={styles.logOutButton} onPress={handleLogOut}>
             <Text style={styles.logOutButtonText}>LOG OUT</Text>
           </TouchableOpacity>
         </View>
@@ -177,16 +180,28 @@ const styles = StyleSheet.create({
   },
   sectionContent: {
     backgroundColor: colors.cardWhite,
-    borderRadius: 12,
+    borderRadius: 14,
     marginHorizontal: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   settingLabel: {
     fontSize: 16,
@@ -197,6 +212,50 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F0F0F0',
     marginHorizontal: 0,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardWhite,
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.softGreenSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  avatarText: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  profileInfo: {
+    marginLeft: 12,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primaryText,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: colors.mutedText,
+    marginTop: 2,
   },
   logOutSection: {
     paddingHorizontal: 16,

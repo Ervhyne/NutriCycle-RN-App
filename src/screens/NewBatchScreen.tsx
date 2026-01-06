@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
@@ -11,13 +11,33 @@ export default function NewBatchScreen({ navigation }: any) {
   const { selectedMachine, addBatch, setCurrentBatch } = useMachineStore();
 
   const [estimatedWeight, setEstimatedWeight] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+
+  const showModal = (title: string, message: string) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
 
   // show batch id to user
   const generatedId = React.useMemo(() => Math.random().toString(36).substring(2, 8).toUpperCase(), []);
 
   const handleCreate = () => {
     if (!selectedMachine) {
-      Alert.alert('No machine selected', 'Please select a machine first.');
+      showModal('No machine selected', 'Please select a machine first.');
+      return;
+    }
+
+    if (!estimatedWeight || estimatedWeight.trim() === '') {
+      showModal('Missing Information', 'Please enter the estimated weight for this batch.');
+      return;
+    }
+
+    const weightValue = Number(estimatedWeight);
+    if (isNaN(weightValue) || weightValue <= 0) {
+      showModal('Invalid Weight', 'Please enter a valid weight greater than 0.');
       return;
     }
 
@@ -27,7 +47,7 @@ export default function NewBatchScreen({ navigation }: any) {
       type: 'mixed' as const,
       status: 'queued' as const,
       currentStep: 1 as const,
-      estimatedWeight: Number(estimatedWeight) || undefined,
+      estimatedWeight: weightValue,
     };
 
     addBatch(batch);
@@ -65,6 +85,27 @@ export default function NewBatchScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalMessage}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setModalVisible(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -85,4 +126,49 @@ const styles = StyleSheet.create({
   createText: { color: colors.cardWhite, fontWeight: '700' },
   cancelButton: { padding: 12, alignItems: 'center', marginTop: 12 },
   cancelText: { color: colors.mutedText },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.creamBackground,
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.primaryText,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: colors.mutedText,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: colors.cardWhite,
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

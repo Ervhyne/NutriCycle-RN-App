@@ -13,35 +13,32 @@ export default function BatchSessionNavigator() {
 
   function CustomTabBar({ state, descriptors, navigation }: any) {
     return (
-      <View style={{ backgroundColor: colors.cardWhite, padding: 12 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <View style={{ backgroundColor: colors.creamBackground, paddingHorizontal: 12 }}>
+         <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.creamBackground }}>
           {state.routes.map((route: any, index: number) => {
             const label = route.name;
-            const focused = state.index === index;
+             const isFocused = state.index === index;
 
             return (
               <TouchableOpacity
                 key={route.key}
                 onPress={() => navigation.navigate(route.name)}
-                activeOpacity={0.85}
-                style={{
-                  flex: 1,
-                  marginHorizontal: 6,
-                  paddingVertical: 10,
-                  backgroundColor: focused ? colors.primary : colors.cardWhite,
-                  borderRadius: 999,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: focused ? 0.12 : 0.04,
-                  shadowRadius: focused ? 12 : 6,
-                  elevation: focused ? 6 : 2,
-                  borderWidth: focused ? 0 : 1,
-                  borderColor: focused ? 'transparent' : colors.cardBorder,
-                }}
+                 activeOpacity={0.7}
+                 style={{ flex: 1, paddingVertical: 12, position: 'relative', alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ fontWeight: '700', color: focused ? colors.cardWhite : colors.primary, fontSize: 14 }}>{label}</Text>
+                 <Text style={{ fontWeight: '700', color: isFocused ? colors.primaryText : colors.mutedText, fontSize: 14, textAlign: 'center' }}>{label}</Text>
+                  {isFocused && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        alignSelf: 'center',
+                        width: '90%',
+                        height: 2.5,
+                        backgroundColor: colors.primary,
+                      }}
+                    />
+                  )}
               </TouchableOpacity>
             );
           })}
