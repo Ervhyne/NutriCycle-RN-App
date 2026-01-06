@@ -20,7 +20,7 @@ export const ContactUsScreen = () => {
   const navigation = useNavigation<ContactNavigationProp>();
 
   const handleOpenWebsite = async () => {
-    const url = 'https://nutricycle.ph';
+    const url = 'https://nutricycle.vercel.app/?fbclid=IwY2xjawPJdlNleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeMOI1GEONSOgUjUZhgeLvqC2M8sfb6WvtzkoWwiZDgy9Fv42mObqbHE2AayM_aem_n9R9vl0YLgm1nVJ6bwLEqg';
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {

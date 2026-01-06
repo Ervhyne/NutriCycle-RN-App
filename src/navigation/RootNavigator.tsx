@@ -24,6 +24,9 @@ import SplashScreen from '../components/SplashScreen';
 import { navigationRef } from './NavigationService';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth, db } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +35,7 @@ export default function RootNavigator() {
   const [navigationReady, setNavigationReady] = React.useState(false);
   const [minSplashDone, setMinSplashDone] = React.useState(false);
   const [hasSeenOnboarding, setHasSeenOnboarding] = React.useState<boolean | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     const t = setTimeout(() => setMinSplashDone(true), 900); // ensure splash shows briefly
@@ -50,15 +54,98 @@ export default function RootNavigator() {
     loadFlag();
   }, []);
 
+  // Listen to auth state changes
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setIsAuthenticated(!!user);
+      
+      if (user?.email) {
+        // Sync AsyncStorage with current auth state
+        await AsyncStorage.setItem('loggedInUserEmail', user.email);
+        await AsyncStorage.setItem('loggedInUserId', user.uid);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Monitor session validity - log out if session is invalidated by another device
+  React.useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    const monitorSession = async () => {
+      // Don't monitor if we're showing the session conflict modal
+      const showingModal = await AsyncStorage.getItem('showingSessionModal');
+      if (showingModal === 'true') {
+        return;
+      }
+      
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      const userId = currentUser.uid;
+      const deviceId = await AsyncStorage.getItem('deviceSessionId');
+
+      // Listen to session document changes
+      const sessionRef = doc(db, 'activeSessions', userId);
+      unsubscribe = onSnapshot(
+        sessionRef, 
+        async (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const sessionData = docSnapshot.data();
+            
+            // If the device ID doesn't match, this device's session was invalidated
+            if (sessionData.deviceId && sessionData.deviceId !== deviceId) {
+              try {
+                await auth.signOut();
+                await AsyncStorage.removeItem('loggedInUserEmail');
+                await AsyncStorage.removeItem('loggedInUserId');
+                navigationRef.current?.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              } catch (error) {
+                console.error('Error during forced logout:', error);
+              }
+            }
+          }
+          // Don't auto-logout if session doesn't exist - user might have just logged out normally
+        },
+        (error) => {
+          console.error('Session monitoring error:', error);
+          // Don't force logout on monitoring errors
+        }
+      );
+    };
+
+    if (isAuthenticated && navigationReady) {
+      monitorSession();
+    }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [isAuthenticated, navigationReady]);
+
   const onReady = () => {
     setNavigationReady(true);
     setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name);
   };
 
-  const showSplash = hasSeenOnboarding === null || !minSplashDone;
+  const showSplash = hasSeenOnboarding === null || isAuthenticated === null || !minSplashDone;
 
-  if (hasSeenOnboarding === null) {
+  if (hasSeenOnboarding === null || isAuthenticated === null) {
     return <SplashScreen />;
+  }
+
+  // Determine initial route
+  let initialRoute = 'Login';
+  if (hasSeenOnboarding === false) {
+    initialRoute = 'Onboarding';
+  } else if (isAuthenticated) {
+    initialRoute = 'Lobby';
   }
 
   return (
@@ -71,7 +158,7 @@ export default function RootNavigator() {
       }}
     >
       <Stack.Navigator
-        initialRouteName={hasSeenOnboarding === false ? 'Onboarding' : 'Login'}
+        initialRouteName={initialRoute}
         screenOptions={{
           headerShown: false,
           animation: 'fade',

@@ -1,71 +1,91 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Play, Pause, StopCircle, AlertOctagon } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { Play, StopCircle } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 
 export default function ControlPanel() {
-  const { startProcessing, pauseProcessing, stopProcessing, emergencyStop, selectedMachine } = useMachineStore();
+  const { startProcessing, stopProcessing, selectedMachine } = useMachineStore();
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
-  const handleEmergency = () => {
-    Alert.alert('Emergency Stop', 'Confirm emergency stop?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Emergency Stop', style: 'destructive', onPress: () => emergencyStop() },
-    ]);
+  const handleStopPress = () => setConfirmVisible(true);
+
+  const confirmStop = () => {
+    setConfirmVisible(false);
+    stopProcessing();
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.row}>
+      <View style={styles.column}>
         <TouchableOpacity style={styles.button} onPress={startProcessing} activeOpacity={0.8}>
           <Play size={20} color={colors.cardWhite} />
           <Text style={styles.buttonText}>Start</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.pause]} onPress={pauseProcessing} activeOpacity={0.8}>
-          <Pause size={20} color={colors.cardWhite} />
-          <Text style={styles.buttonText}>Pause</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.stop]} onPress={stopProcessing} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.button, styles.stop]} onPress={handleStopPress} activeOpacity={0.8}>
           <StopCircle size={20} color={colors.cardWhite} />
           <Text style={styles.buttonText}>Stop</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.emergency} onPress={handleEmergency} activeOpacity={0.8}>
-        <AlertOctagon size={18} color={colors.cardWhite} />
-        <Text style={styles.emergencyText}>Emergency Stop</Text>
-      </TouchableOpacity>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={confirmVisible}
+        onRequestClose={() => setConfirmVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Emergency Stop</Text>
+            <Text style={styles.modalMessage}>Are you sure you want to stop the machine?</Text>
+            <TouchableOpacity
+              style={styles.modalPrimary}
+              onPress={confirmStop}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalPrimaryText}>OK</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalCancel}
+              onPress={() => setConfirmVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    margin: 16,
-    backgroundColor: colors.cardWhite,
-    borderRadius: 12,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 18,
+    marginTop: 8,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+  column: {
+    flexDirection: 'column',
+    gap: 12,
   },
   button: {
-    flex: 1,
     backgroundColor: colors.primary,
-    paddingVertical: 12,
+    paddingVertical: 18,
     alignItems: 'center',
     borderRadius: 10,
-    marginHorizontal: 6,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
+    width: '100%',
   },
   pause: {
     backgroundColor: colors.warning,
@@ -75,21 +95,65 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.cardWhite,
-    fontWeight: '700',
-    marginLeft: 4,
+    fontWeight: '800',
+    marginLeft: 4,  
   },
-  emergency: {
-    marginTop: 4,
-    backgroundColor: colors.danger,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    flexDirection: 'row',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
+    padding: 20,
   },
-  emergencyText: {
-    color: colors.cardWhite,
+  modalContent: {
+    backgroundColor: colors.creamBackground,
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
     fontWeight: '700',
+    color: colors.primaryText,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: colors.mutedText,
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalPrimary: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalPrimaryText: {
+    color: colors.cardWhite,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalCancel: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 8,
+  },
+  modalCancelText: {
+    color: colors.mutedText,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
