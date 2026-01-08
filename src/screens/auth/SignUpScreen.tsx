@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.primaryText,
     borderWidth: 1,
-    borderColor: '#C6D3C1',
+    borderColor: colors.cardBorder,
   },
   inputRow: {
     flexDirection: 'row',
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   passwordInput: {
     flex: 1,

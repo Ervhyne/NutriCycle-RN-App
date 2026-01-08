@@ -37,6 +37,8 @@ export const VerificationCodeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const spinValue = useRef(new Animated.Value(0)).current;
 
@@ -86,12 +88,14 @@ export const VerificationCodeScreen = () => {
     const enteredCode = code.join('');
     
     if (enteredCode.length !== 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit code');
+      setErrorModalMessage('Please enter the complete 6-digit code');
+      setErrorModalVisible(true);
       return;
     }
 
     if (enteredCode !== verificationCode) {
-      Alert.alert('Error', 'Invalid verification code. Please try again.');
+      setErrorModalMessage('Invalid verification code. Please try again.');
+      setErrorModalVisible(true);
       return;
     }
 
@@ -140,7 +144,8 @@ export const VerificationCodeScreen = () => {
       } else if (error.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email';
       }
-      Alert.alert('Error', errorMessage);
+      setErrorModalMessage(errorMessage);
+      setErrorModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -195,7 +200,8 @@ export const VerificationCodeScreen = () => {
         throw new Error('Failed to send email');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to resend verification code');
+      setErrorModalMessage('Failed to resend verification code');
+      setErrorModalVisible(true);
     } finally {
       setResending(false);
     }
@@ -300,6 +306,21 @@ export const VerificationCodeScreen = () => {
           </View>
         </View>
       )}
+
+      {errorModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Verification Error</Text>
+            <Text style={styles.modalSubtitle}>{errorModalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -355,7 +376,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
     backgroundColor: colors.cardWhite,
     fontSize: 24,
     fontWeight: '600',
@@ -432,7 +453,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '90%',
-    backgroundColor: '#FBF6C8',
+    backgroundColor: colors.creamBackground,
     borderRadius: 16,
     paddingVertical: 32,
     paddingHorizontal: 20,

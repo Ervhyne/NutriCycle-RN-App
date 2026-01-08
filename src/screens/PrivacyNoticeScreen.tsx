@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: Platform.OS === 'android' ? 1 : 0,
-    borderBottomColor: '#E5E5E5',
+   borderBottomColor: colors.creamBackground,
   },
   backButton: {
     padding: 8,

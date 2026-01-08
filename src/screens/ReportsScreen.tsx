@@ -5,7 +5,7 @@ import { colors } from '../theme/colors';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import ScreenTitle from '../components/ScreenTitle';
 import HistoryDetailsModal from '../components/HistoryDetailsModal';
-import { Filter, Calendar, ChevronRight } from 'lucide-react-native';
+import { Filter, Calendar, ChevronRight, XCircle } from 'lucide-react-native';
 import { useMachineStore } from '../stores/machineStore';
 
 const screenWidth = Dimensions.get('window').width - 32;
@@ -98,6 +98,8 @@ export default function ReportsScreen() {
     setIsFilterOpen(false);
   };
 
+  const hasMachines = machines.length > 0;
+
   const rangeLabel = useMemo(() => {
     if (range === 'week') return 'Week';
     if (range === 'month') return 'Month';
@@ -127,73 +129,84 @@ export default function ReportsScreen() {
           <ScreenTitle style={{ textAlign: 'center' }}>Reports</ScreenTitle>
         </View>
 
-        <Text style={styles.sectionTitle}>Outputs</Text>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.cardsColumn}
-          style={styles.cardsScroll}
-        >
-          {mockCards.map((card) => (
-            <View key={card.id} style={[styles.card, { width: cardWidth }]}> 
-              <Text style={styles.cardTitle}>{card.title}</Text>
-              <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
+        {hasMachines && <Text style={styles.sectionTitle}>Outputs</Text>}
 
-              {card.chartType === 'bar' ? (
-                <BarChart
-                  data={card.chartData}
-                  width={cardWidth - 32}
-                  height={160}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                  chartConfig={{
-                    backgroundGradientFrom: colors.cardWhite,
-                    backgroundGradientTo: colors.cardWhite,
-                    color: (opacity = 1) => `rgba(46,125,50, ${opacity})`,
-                    decimalPlaces: 0,
-                  }}
-                  style={styles.cardChart}
-                />
-              ) : (
-                <LineChart
-                  data={card.chartData}
-                  width={cardWidth - 32}
-                  height={160}
-                  chartConfig={{
-                    backgroundGradientFrom: colors.cardWhite,
-                    backgroundGradientTo: colors.cardWhite,
-                    color: (opacity = 1) => `rgba(31,95,42, ${opacity})`,
-                    strokeWidth: 2,
-                    decimalPlaces: 0,
-                    fillShadowGradient: 'rgba(31,95,42, 0.3)',
-                    fillShadowGradientOpacity: 1,
-                  }}
-                  bezier
-                  style={styles.cardChart}
-                />
-              )}
+        {hasMachines ? (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.cardsColumn}
+            style={styles.cardsScroll}
+          >
+            {mockCards.map((card) => (
+              <View key={card.id} style={[styles.card, { width: cardWidth }]}> 
+                <Text style={styles.cardTitle}>{card.title}</Text>
+                <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
 
-              <View style={styles.historyHeader}>
-                <Text style={styles.historyTitle}>Output History</Text>
-                <TouchableOpacity
-                  style={styles.viewHistoryContainer}
-                  onPress={() => handleViewHistory(card.id)}
-                >
-                  <Text style={styles.viewHistoryButton}>View History</Text>
-                  <ChevronRight size={16} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-              {card.history.map((item) => (
-                <View key={`${card.id}-${item.date}`} style={styles.historyRow}>
-                  <View style={styles.historyLeft}>
-                    <Calendar size={16} color={colors.mutedText} />
-                    <Text style={styles.historyDate}>{item.date}</Text>
-                  </View>
-                  <Text style={styles.historyValue}>{item.value}</Text>
+                {card.chartType === 'bar' ? (
+                  <BarChart
+                    data={card.chartData}
+                    width={cardWidth - 32}
+                    height={160}
+                    yAxisLabel=""
+                    yAxisSuffix=""
+                    chartConfig={{
+                      backgroundGradientFrom: colors.cardWhite,
+                      backgroundGradientTo: colors.cardWhite,
+                      color: (opacity = 1) => `rgba(46,125,50, ${opacity})`,
+                      decimalPlaces: 0,
+                    }}
+                    style={styles.cardChart}
+                  />
+                ) : (
+                  <LineChart
+                    data={card.chartData}
+                    width={cardWidth - 32}
+                    height={160}
+                    chartConfig={{
+                      backgroundGradientFrom: colors.cardWhite,
+                      backgroundGradientTo: colors.cardWhite,
+                      color: (opacity = 1) => `rgba(31,95,42, ${opacity})`,
+                      strokeWidth: 2,
+                      decimalPlaces: 0,
+                      fillShadowGradient: 'rgba(31,95,42, 0.3)',
+                      fillShadowGradientOpacity: 1,
+                    }}
+                    bezier
+                    style={styles.cardChart}
+                  />
+                )}
+
+                <View style={styles.historyHeader}>
+                  <Text style={styles.historyTitle}>Output History</Text>
+                  <TouchableOpacity
+                    style={styles.viewHistoryContainer}
+                    onPress={() => handleViewHistory(card.id)}
+                  >
+                    <Text style={styles.viewHistoryButton}>View History</Text>
+                    <ChevronRight size={16} color={colors.primary} />
+                  </TouchableOpacity>
                 </View>
-              ))}
+                {card.history.map((item) => (
+                  <View key={`${card.id}-${item.date}`} style={styles.historyRow}>
+                    <View style={styles.historyLeft}>
+                      <Calendar size={16} color={colors.mutedText} />
+                      <Text style={styles.historyDate}>{item.date}</Text>
+                    </View>
+                    <Text style={styles.historyValue}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <XCircle size={56} color={colors.mutedText} />
             </View>
-          ))}
-        </ScrollView>
+            <Text style={styles.emptyTitle}>No Reports</Text>
+            <Text style={styles.emptyText}>Add a machine to start seeing reports</Text>
+          </View>
+        )}
       </ScrollView>
 
       <HistoryDetailsModal
@@ -274,4 +287,25 @@ const styles = StyleSheet.create({
   historyLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   historyDate: { fontSize: 13, color: colors.primaryText },
   historyValue: { fontSize: 13, color: colors.primaryText, fontWeight: '700' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 250 },
+  emptyIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.cardSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    
+    marginTop: 20,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  emptyTitle: { fontSize: 26, fontWeight: '700', color: colors.primary, marginBottom: 10 },
+  emptyText: { fontSize: 16, color: colors.mutedText, textAlign: 'center' },
 });
