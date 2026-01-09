@@ -44,6 +44,8 @@ export const ChangePasswordScreen = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [showPasswordMismatch, setShowPasswordMismatch] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const spinValue = useRef(new Animated.Value(0)).current;
 
   const validatePasswordRequirements = (pwd: string): PasswordRequirements => {
@@ -129,7 +131,8 @@ export const ChangePasswordScreen = () => {
 
   const handleUpdatePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setErrorMessage('Please fill in all fields');
+      setErrorModalVisible(true);
       return;
     }
 
@@ -145,7 +148,8 @@ export const ChangePasswordScreen = () => {
     }
 
     if (currentPassword === newPassword) {
-      Alert.alert('Error', 'New password must be different from current password');
+      setErrorMessage('New password must be different from current password');
+      setErrorModalVisible(true);
       return;
     }
 
@@ -169,15 +173,16 @@ export const ChangePasswordScreen = () => {
       }
       setShowSuccessModal(true);
     } catch (error: any) {
-      let errorMessage = 'Failed to update password';
+      let msg = 'Failed to update password';
       if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Current password is incorrect';
+        msg = 'Current password is incorrect';
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'New password is too weak';
+        msg = 'New password is too weak';
       } else if (error.code === 'auth/requires-recent-login') {
-        errorMessage = 'Please log out and log in again before changing your password';
+        msg = 'Please log out and log in again before changing your password';
       }
-      Alert.alert('Error', errorMessage);
+      setErrorMessage(msg);
+      setErrorModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -351,6 +356,21 @@ export const ChangePasswordScreen = () => {
         </View>
       </Modal>
 
+      {errorModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalErrorTitle}>Error</Text>
+            <Text style={styles.modalErrorSubtitle}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {showSuccessModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -396,7 +416,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: Platform.OS === 'android' ? 1 : 0,
-    borderBottomColor: '#E5E5E5',
+  borderBottomColor: colors.creamBackground,
   },
   backButton: {
     padding: 8,
@@ -424,7 +444,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   passwordInput: {
     flex: 1,
@@ -497,6 +517,37 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     paddingHorizontal: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  modalErrorCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFE5E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#D32F2F',
+  },
+  modalErrorIcon: {
+    fontSize: 40,
+    color: '#D32F2F',
+    fontWeight: '700',
+  },
+  modalErrorTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#D32F2F',
+    marginBottom: 8,
+  },
+  modalErrorSubtitle: {
+    fontSize: 14,
+    color: colors.primaryText,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
   },
   modalCheckCircle: {
     width: 72,

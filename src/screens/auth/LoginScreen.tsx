@@ -257,7 +257,7 @@ export const LoginScreen = () => {
 
             {/* Title and Subtitle */}
             <ScreenTitle>Welcome to NutriCycle</ScreenTitle>
-            <Text style={styles.subtitle}>Log in to manage cabbage waste</Text>
+            <Text style={styles.subtitle}>Log in to manage vegetable wastes</Text>
 
             {/* Form */}
             <View style={styles.form}>
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.primaryText,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   passwordInputWrapper: {
     flexDirection: 'row',
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardWhite,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.cardBorder,
   },
   passwordInput: {
     flex: 1,

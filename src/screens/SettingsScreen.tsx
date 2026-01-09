@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -24,44 +24,40 @@ type SettingsScreenNavigationProp = NavigationProp<RootStackParamList, 'Dashboar
 export const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const insets = useSafeAreaInsets();
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogOut = async () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const userId = auth.currentUser?.uid;
-            
-            // Delete session from Firestore
-            if (userId) {
-              try {
-                const sessionRef = doc(db, 'activeSessions', userId);
-                await deleteDoc(sessionRef);
-              } catch (firestoreError) {
-                console.warn('Failed to delete session from Firestore:', firestoreError);
-                // Continue with logout even if Firestore fails
-              }
-            }
-            
-            await signOut(auth);
-            // Clear stored session data
-            await AsyncStorage.removeItem('loggedInUserEmail');
-            await AsyncStorage.removeItem('loggedInUserId');
-            // Reset navigation stack so back button won't show Settings
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
-          } catch (error) {
-            console.error('Logout error:', error);
-            Alert.alert('Error', 'Failed to log out. Please try again.');
-          }
-        },
-      },
-    ]);
+    setLogoutModalVisible(true);
+  };
+
+  const confirmLogOut = async () => {
+    setLoggingOut(true);
+    try {
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        try {
+          const sessionRef = doc(db, 'activeSessions', userId);
+          await deleteDoc(sessionRef);
+        } catch (firestoreError) {
+          console.warn('Failed to delete session from Firestore:', firestoreError);
+        }
+      }
+
+      await signOut(auth);
+      await AsyncStorage.removeItem('loggedInUserEmail');
+      await AsyncStorage.removeItem('loggedInUserId');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Error', 'Failed to log out. Please try again.');
+    } finally {
+      setLoggingOut(false);
+      setLogoutModalVisible(false);
+    }
   };
 
   const handleTabPress = (tabKey: string) => {
@@ -145,6 +141,30 @@ export const SettingsScreen = () => {
         </View>
       </ScrollView>
 
+      {logoutModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Log Out</Text>
+            <Text style={styles.modalSubtitle}>Are you sure you want to log out?</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondaryButton}
+                onPress={() => setLogoutModalVisible(false)}
+                disabled={loggingOut}
+              >
+                <Text style={styles.modalSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalPrimaryButton, loggingOut && styles.modalPrimaryButtonDisabled]}
+                onPress={confirmLogOut}
+                disabled={loggingOut}
+              >
+                <Text style={styles.modalPrimaryText}>{loggingOut ? 'Logging out...' : 'Log Out'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
     </SafeAreaView>
   );
@@ -273,5 +293,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#00000044',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '90%',
+    backgroundColor: colors.creamBackground,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.primaryText,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.mutedText,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+  },
+  modalSecondaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.cardWhite,
+  },
+  modalSecondaryText: {
+    color: colors.primaryText,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalPrimaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+  },
+  modalPrimaryButtonDisabled: {
+    opacity: 0.7,
+  },
+  modalPrimaryText: {
+    color: colors.cardWhite,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

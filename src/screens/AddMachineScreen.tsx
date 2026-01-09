@@ -23,15 +23,19 @@ export default function AddMachineScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [addedMachineName, setAddedMachineName] = useState('');
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleAddMachine = () => {
     if (!machineId.trim()) {
-      Alert.alert('Error', 'Please enter a Machine ID');
+      setErrorMessage('Please enter a Machine ID');
+      setErrorModalVisible(true);
       return;
     }
 
     if (!machineName.trim()) {
-      Alert.alert('Error', 'Please enter a Machine Name');
+      setErrorMessage('Please enter a Machine Name');
+      setErrorModalVisible(true);
       return;
     }
 
@@ -124,6 +128,21 @@ export default function AddMachineScreen({ navigation }: any) {
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
+
+        {errorModalVisible && (
+          <View style={styles.modalOverlay} pointerEvents="box-none">
+            <View style={styles.modalCard}>
+              <Text style={styles.modalErrorTitle}>Error</Text>
+              <Text style={styles.modalErrorSubtitle}>{errorMessage}</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setErrorModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {showSuccessModal && (
           <View style={styles.modalOverlay} pointerEvents="box-none">
@@ -324,11 +343,24 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     marginBottom: 6,
   },
+  modalErrorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#D32F2F',
+    marginBottom: 8,
+  },
   modalSubtitle: {
     fontSize: 14,
     color: colors.mutedText,
     marginBottom: 14,
     textAlign: 'center',
+  },
+  modalErrorSubtitle: {
+    fontSize: 14,
+    color: colors.primaryText,
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   modalButton: {
     backgroundColor: colors.primary,

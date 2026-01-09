@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   Image,
+  TextInput,
 } from 'react-native';
 import { Plus, Wifi, WifiOff, Camera, MoreHorizontal, XCircle } from 'lucide-react-native';
 import MachineIcon from '../components/MachineIcon';
@@ -23,10 +24,15 @@ import { NAV_HEIGHT } from '../components/BottomNavigation';
 
 
 export default function MachineLobbyScreen({ navigation }: any) {
-  const { machines, selectMachine, removeMachine, batches } = useMachineStore();
+  const { machines, selectMachine, removeMachine, updateMachine, batches } = useMachineStore();
   const insets = useSafeAreaInsets();
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [machineToDelete, setMachineToDelete] = useState<string | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [machineToEdit, setMachineToEdit] = useState<Machine | null>(null);
+  const [editedName, setEditedName] = useState('');
 
 
 
@@ -47,15 +53,43 @@ export default function MachineLobbyScreen({ navigation }: any) {
 
   const handleEditMachine = (machine: Machine) => {
     setOpenMenuId(null);
-    navigation.navigate('AddMachine', { mode: 'edit', machine });
+    setMachineToEdit(machine);
+    setEditedName(machine.name);
+    setEditModalVisible(true);
   };
 
   const handleDeleteMachine = (machineId: string) => {
     setOpenMenuId(null);
-    Alert.alert('Delete Machine', 'Are you sure you want to delete this machine?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => removeMachine(machineId) },
-    ]);
+    setMachineToDelete(machineId);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = () => {
+    if (machineToDelete) {
+      removeMachine(machineToDelete);
+    }
+    setDeleteModalVisible(false);
+    setMachineToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalVisible(false);
+    setMachineToDelete(null);
+  };
+
+  const confirmEditName = () => {
+    if (machineToEdit && editedName.trim()) {
+      updateMachine(machineToEdit.id, { name: editedName.trim() });
+      setEditModalVisible(false);
+      setMachineToEdit(null);
+      setEditedName('');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditModalVisible(false);
+    setMachineToEdit(null);
+    setEditedName('');
   };
 
   const renderMachineCard = ({ item }: { item: Machine }) => {
@@ -180,6 +214,47 @@ export default function MachineLobbyScreen({ navigation }: any) {
       >
         <Plus size={20} color={colors.cardWhite} />
       </TouchableOpacity>
+
+      {deleteModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete Machine</Text>
+            <Text style={styles.modalSubtitle}>Are you sure you want to delete this machine?</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSecondaryButton} onPress={cancelDelete}>
+                <Text style={styles.modalSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalPrimaryButton} onPress={confirmDelete}>
+                <Text style={styles.modalPrimaryText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {editModalVisible && machineToEdit && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit Machine Name</Text>
+            <TextInput
+              style={styles.editInput}
+              placeholder="Machine name"
+              placeholderTextColor={colors.mutedText}
+              value={editedName}
+              onChangeText={setEditedName}
+              maxLength={50}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSecondaryButton} onPress={cancelEdit}>
+                <Text style={styles.modalSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalPrimaryButton} onPress={confirmEditName}>
+                <Text style={styles.modalPrimaryText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
 
     </SafeAreaView>
@@ -446,5 +521,83 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#00000044',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '90%',
+    backgroundColor: colors.creamBackground,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.primaryText,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.mutedText,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+  },
+  modalSecondaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.cardWhite,
+  },
+  modalSecondaryText: {
+    color: colors.primaryText,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalPrimaryButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+  },
+  modalPrimaryText: {
+    color: colors.cardWhite,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  editInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.primaryText,
+    backgroundColor: colors.cardWhite,
+    marginBottom: 20,
   },
 });
