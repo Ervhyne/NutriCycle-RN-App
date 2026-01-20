@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
@@ -7,6 +7,7 @@ import ScreenTitle from '../components/ScreenTitle';
 export default function ProcessScreen({ navigation }: any) {
   const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch } = useMachineStore();
   const scrollViewRef = React.useRef<ScrollView>(null);
+  const [mockSeconds, setMockSeconds] = React.useState(5);
 
   React.useEffect(() => {
     if (currentBatch?.status === 'completed') {
@@ -23,6 +24,27 @@ export default function ProcessScreen({ navigation }: any) {
       }, 300);
     }
   }, [currentBatch?.currentStep]);
+
+  // Mock timer (5-second loop) - automatically advances steps only when running
+  React.useEffect(() => {
+    // Only run timer if batch is actively running (not stopped or paused)
+    if (currentBatch?.status !== 'running') {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setMockSeconds((prev) => {
+        if (prev <= 1) {
+          // When timer resets, advance the batch step
+          advanceBatchStep();
+          return 5;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [currentBatch?.status, advanceBatchStep]);
 
   const renderProcessSection = (type: 'feed' | 'compost') => {
     const labels = type === 'feed'
@@ -83,6 +105,10 @@ export default function ProcessScreen({ navigation }: any) {
     );
   };
 
+  // Determine which section to show based on batch progress
+  const showFeedOnly = currentBatch?.type === 'mixed' && currentBatch.currentStep <= 5;
+  const showCompostOnly = currentBatch?.type === 'mixed' && currentBatch.currentStep > 5;
+
   return (
     <View style={styles.container}>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent} scrollEventThrottle={16}>
@@ -91,34 +117,25 @@ export default function ProcessScreen({ navigation }: any) {
         </View>
 
         <View style={styles.cardsContainer}>
-          <View style={styles.cardWrapper}>
-            {renderProcessSection('feed')}
-          </View>
+          {/* Show Feed section first, then switch to Compost when Feed is completed */}
+          {(currentBatch?.type === 'feed' || showFeedOnly || !currentBatch?.type) && (
+            <View style={styles.cardWrapper}>
+              {renderProcessSection('feed')}
+            </View>
+          )}
 
-          <View style={styles.cardWrapper}>
-            {renderProcessSection('compost')}
-          </View>
+          {(currentBatch?.type === 'compost' || showCompostOnly) && (
+            <View style={styles.cardWrapper}>
+              {renderProcessSection('compost')}
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.mutedText }]} onPress={() => revertBatchStep()}>
-              <Text style={styles.actionText}>Back</Text>
-            </TouchableOpacity>
-
-            {currentBatch?.status === 'queued' ? (
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => startProcessing()}>
-                <Text style={[styles.actionText, { color: colors.cardWhite }]}>Start</Text>
-              </TouchableOpacity>
-            ) : currentBatch?.status === 'running' ? (
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => advanceBatchStep()}>
-                <Text style={[styles.actionText, { color: colors.cardWhite }]}>Advance</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.success }]} onPress={() => completeBatch()}>
-                <Text style={[styles.actionText, { color: colors.cardWhite }]}>Complete</Text>
-              </TouchableOpacity>
-            )}
+          <View style={styles.timerCard} key={`timer-${mockSeconds}`}>
+            <Text style={styles.timerLabel}>Mock Timer</Text>
+            <Text style={styles.timerValue}>00:0{mockSeconds}</Text>
+            <Text style={styles.timerHint}>Replaces Back/Start buttons for prototype only</Text>
           </View>
         </View>
       </ScrollView>
@@ -270,25 +287,37 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginTop: 20,
-  },
-  actionBtn: {
-    flex: 1,
-    padding: 16,
+  timerCard: {
+    backgroundColor: colors.cardWhite,
     borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 2,
   },
-  actionText: { fontWeight: '700', color: colors.cardWhite, fontSize: 16 },
+  timerLabel: {
+    fontSize: 14,
+    color: colors.mutedText,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  timerValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 1,
+  },
+  timerHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: colors.mutedText,
+    textAlign: 'center',
+  },
   batchItem: { backgroundColor: colors.cardWhite, padding: 10, borderRadius: 8, marginBottom: 8 },
   batchText: { color: colors.primaryText, fontWeight: '600' },
 });

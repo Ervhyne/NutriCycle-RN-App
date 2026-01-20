@@ -418,11 +418,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: -20,
   },
   logoImage: {
-    width: 120,
-    height: 120,
+    width: 260,
+    height: 260,
   },
   subtitle: {
     fontSize: 16,
@@ -523,9 +523,9 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   loadingLogo: {
-    width: 120,
-    height: 120,
-    marginBottom: 16,
+    width: 260,
+    height: 260,
+    marginBottom: -10,
   },
   loadingText: {
     fontSize: 18,

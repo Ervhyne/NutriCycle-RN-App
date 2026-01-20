@@ -41,7 +41,7 @@ export const PrivacyNoticeScreen = () => {
           onPress={() => navigation.goBack()}
         >
           <ChevronLeft size={28} color={colors.primaryText} strokeWidth={2.5} />
-        </TouchableOpacity>
+        </TouchableOpacity> 
         <Text style={styles.headerTitle}>Privacy Notice</Text>
         <View style={styles.headerSpacer} />
       </View>
