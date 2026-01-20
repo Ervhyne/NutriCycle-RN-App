@@ -1,28 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Play, StopCircle } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 
 export default function ControlPanel() {
-  const { startProcessing, stopProcessing, selectedMachine } = useMachineStore();
+  const { startProcessing, stopProcessing, selectedMachine, currentBatch } = useMachineStore();
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
 
-  const handleStopPress = () => setConfirmVisible(true);
+  // Reset isStopped when a new batch starts or status changes to running
+  useEffect(() => {
+    if (currentBatch?.status === 'running') {
+      setIsStopped(false);
+    }
+  }, [currentBatch?.status]);
+
+  const handleStopPress = () => {
+    if (!isStopped) {
+      setConfirmVisible(true);
+    }
+  };
+
+  const handleStartPress = () => {
+    setIsStopped(false);  // Reset stop button state when starting
+    startProcessing();
+  };
 
   const confirmStop = () => {
     setConfirmVisible(false);
+    setIsStopped(true);
     stopProcessing();
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.column}>
-        <TouchableOpacity style={styles.button} onPress={startProcessing} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.button} onPress={handleStartPress} activeOpacity={0.8}>
           <Play size={20} color={colors.cardWhite} />
           <Text style={styles.buttonText}>Start</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.stop]} onPress={handleStopPress} activeOpacity={0.8}>
+        <TouchableOpacity 
+          style={[styles.button, styles.stop, isStopped && styles.disabled]} 
+          onPress={handleStopPress} 
+          activeOpacity={isStopped ? 1 : 0.8}
+          disabled={isStopped}
+        >
           <StopCircle size={20} color={colors.cardWhite} />
           <Text style={styles.buttonText}>Stop</Text>
         </TouchableOpacity>
@@ -92,6 +115,9 @@ const styles = StyleSheet.create({
   },
   stop: {
     backgroundColor: colors.danger,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   buttonText: {
     color: colors.cardWhite,

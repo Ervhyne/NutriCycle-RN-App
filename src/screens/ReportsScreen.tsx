@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
@@ -30,53 +30,130 @@ export default function ReportsScreen() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
 
-  const lineDataByRange: Record<RangeKey, ChartData> = useMemo(
-    () => ({
-      week: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{ data: [14, 19, 17, 22, 27, 32, 29] }],
-      },
-      month: {
-        labels: ['W1', 'W2', 'W3', 'W4'],
-        datasets: [{ data: [88, 96, 110, 104] }],
-      },
-      year: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        datasets: [{ data: [240, 260, 280, 300, 320, 310, 330, 350, 340, 360, 380, 400] }],
-      },
-    }),
-    [],
-  );
+  // Helper function to get date range based on selected range
+  const getDateRange = useCallback((rangeType: RangeKey): Date => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    if (rangeType === 'week') {
+      startDate.setDate(now.getDate() - 7);
+    } else if (rangeType === 'month') {
+      startDate.setMonth(now.getMonth() - 1);
+    } else {
+      startDate.setFullYear(now.getFullYear() - 1);
+    }
+    
+    return startDate;
+  }, []);
 
-  const barDataByRange: Record<RangeKey, ChartData> = useMemo(
-    () => ({
-      week: {
-        labels: ['Feed', 'Compost', 'Waste'],
-        datasets: [{ data: [140, 95, 18] }],
-      },
-      month: {
-        labels: ['Feed', 'Compost', 'Waste'],
-        datasets: [{ data: [560, 380, 64] }],
-      },
-      year: {
-        labels: ['Feed', 'Compost', 'Waste'],
-        datasets: [{ data: [3000, 2100, 450] }],
-      },
-    }),
-    [],
-  );
+  // Calculate line chart data from real batches
+  const lineDataByRange: Record<RangeKey, ChartData> = useMemo(() => {
+    const now = new Date();
+    const completedBatches = batches.filter(b => b.status === 'completed' && b.endTime);
+
+    const weekData = () => {
+      const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const data = new Array(7).fill(0);
+      const startDate = getDateRange('week');
+      
+      completedBatches.forEach(batch => {
+        if (batch.endTime && batch.endTime >= startDate) {
+          const dayIndex = (batch.endTime.getDay() + 6) % 7; // Convert to Mon=0, Sun=6
+          data[dayIndex] += batch.actualWeight ?? 0;
+        }
+      });
+      
+      return { labels, datasets: [{ data: data.map(v => Math.round(v)) }] };
+    };
+
+    const monthData = () => {
+      const labels = ['W1', 'W2', 'W3', 'W4'];
+      const data = new Array(4).fill(0);
+      const startDate = getDateRange('month');
+      
+      completedBatches.forEach(batch => {
+        if (batch.endTime && batch.endTime >= startDate) {
+          const weekIndex = Math.min(Math.floor((batch.endTime.getDate() - 1) / 7), 3);
+          data[weekIndex] += batch.actualWeight ?? 0;
+        }
+      });
+      
+      return { labels, datasets: [{ data: data.map(v => Math.round(v)) }] };
+    };
+
+    const yearData = () => {
+      const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const data = new Array(12).fill(0);
+      const startDate = getDateRange('year');
+      
+      completedBatches.forEach(batch => {
+        if (batch.endTime && batch.endTime >= startDate) {
+          const monthIndex = batch.endTime.getMonth();
+          data[monthIndex] += batch.actualWeight ?? 0;
+        }
+      });
+      
+      return { labels, datasets: [{ data: data.map(v => Math.round(v)) }] };
+    };
+
+    return {
+      week: weekData(),
+      month: monthData(),
+      year: yearData(),
+    };
+  }, [batches, getDateRange]);
+
+  // Calculate bar chart data from real batches by type
+  const barDataByRange: Record<RangeKey, ChartData> = useMemo(() => {
+    const calculateByType = (rangeType: RangeKey) => {
+      const startDate = getDateRange(rangeType);
+      const completedBatches = batches.filter(
+        b => b.status === 'completed' && b.endTime && b.endTime >= startDate
+      );
+
+      const feedTotal = completedBatches
+        .filter(b => b.type === 'feed')
+        .reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      
+      const compostTotal = completedBatches
+        .filter(b => b.type === 'compost')
+        .reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      
+      const mixedTotal = completedBatches
+        .filter(b => b.type === 'mixed')
+        .reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+
+      return {
+        labels: ['Feed', 'Compost', 'Mixed'],
+        datasets: [{ 
+          data: [
+            Math.round(feedTotal), 
+            Math.round(compostTotal), 
+            Math.round(mixedTotal)
+          ] 
+        }],
+      };
+    };
+
+    return {
+      week: calculateByType('week'),
+      month: calculateByType('month'),
+      year: calculateByType('year'),
+    };
+  }, [batches, getDateRange]);
 
   const selectedLineData = useMemo(() => lineDataByRange[range], [lineDataByRange, range]);
-  const selectedBarData = useMemo(() => barDataByRange[range], [barDataByRange, range]);
 
   const mockCards: CardConfig[] = useMemo(() => {
     return machines.map((machine) => {
       const machineBatches = batches.filter((b) => b.machineId === machine.id);
-      const totalOutput = machineBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      const completedBatches = machineBatches.filter(b => b.status === 'completed');
+      const totalOutput = completedBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      
       const recentHistory = machineBatches
         .filter((b) => b.endTime)
         .sort((a, b) => (b.endTime?.getTime() ?? 0) - (a.endTime?.getTime() ?? 0))
-        .slice(0, 3)
+        .slice(0, 5)
         .map((b) => ({
           date: b.endTime?.toLocaleDateString() ?? 'Unknown',
           value: `${b.actualWeight ?? 0} kg`,
@@ -84,7 +161,7 @@ export default function ReportsScreen() {
 
       return {
         id: machine.id,
-        title: `${machine.name} - ${totalOutput} kg`,
+        title: `${machine.name} - ${Math.round(totalOutput)} kg`,
         subtitle: 'Total Output',
         chartData: selectedLineData,
         chartType: 'line' as const,
@@ -106,16 +183,20 @@ export default function ReportsScreen() {
     return 'Year';
   }, [range]);
 
-  const modalHistoryData = useMemo(
-    () => [
-      { date: 'April 22', batch: 'B001', feedKg: 23, compostKg: 8 },
-      { date: 'April 21', batch: 'B002', feedKg: 33, compostKg: 12 },
-      { date: 'April 20', batch: 'B003', feedKg: 29, compostKg: 10 },
-      { date: 'April 19', batch: 'B004', feedKg: 25, compostKg: 9 },
-      { date: 'April 18', batch: 'B005', feedKg: 28, compostKg: 11 },
-    ],
-    [],
-  );
+  // Get real history data for selected machine
+  const modalHistoryData = useMemo(() => {
+    if (!selectedMachine) return [];
+    
+    return batches
+      .filter(b => b.machineId === selectedMachine && b.status === 'completed' && b.endTime)
+      .sort((a, b) => (b.endTime?.getTime() ?? 0) - (a.endTime?.getTime() ?? 0))
+      .map(batch => ({
+        date: batch.endTime?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? 'Unknown',
+        batch: batch.id.substring(0, 8).toUpperCase(),
+        feedKg: batch.type === 'feed' ? Math.round(batch.actualWeight ?? 0) : 0,
+        compostKg: batch.type === 'compost' ? Math.round(batch.actualWeight ?? 0) : 0,
+      }));
+  }, [selectedMachine, batches]);
 
   const handleViewHistory = (machineId: string) => {
     setSelectedMachine(machineId);

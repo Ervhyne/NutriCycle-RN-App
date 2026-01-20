@@ -87,6 +87,7 @@ export const useMachineStore = create<MachineStore>((set) => ({
       doorState: state.telemetry?.doorState ?? 'closed',
     };
 
+    // Continue from current progress - don't reset the step
     const updatedBatch = state.currentBatch ? ({ ...state.currentBatch, status: 'running', startTime: state.currentBatch.startTime ?? new Date() } as Batch) : null;
 
     return {
@@ -100,11 +101,14 @@ export const useMachineStore = create<MachineStore>((set) => ({
     currentBatch: state.currentBatch ? ({ ...state.currentBatch, status: 'paused' } as Batch) : null,
   })),
   stopProcessing: () => set((state) => {
-    const updatedBatches = state.currentBatch ? state.batches.map((b) => b.id === state.currentBatch!.id ? ({ ...b, status: 'completed', endTime: new Date() } as Batch) : b) : state.batches;
+    // Stop but keep the batch with current progress - don't mark as completed
+    const updatedBatch = state.currentBatch ? { ...state.currentBatch, status: 'paused' } as Batch : null;
+    const updatedBatches = updatedBatch ? state.batches.map((b) => b.id === updatedBatch.id ? updatedBatch : b) : state.batches;
+    
     return {
       telemetry: { ...state.telemetry!, motorState: 'idle' } as MachineTelemetry,
       batches: updatedBatches,
-      currentBatch: null,
+      currentBatch: updatedBatch,  // Keep the batch so we can see progress
     };
   }),
   advanceBatchStep: (batchId?: string) => set((state) => {
