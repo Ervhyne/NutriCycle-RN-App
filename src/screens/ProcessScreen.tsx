@@ -1,20 +1,129 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Modal, Animated, Easing, Dimensions } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
+
+const { height: screenHeight } = Dimensions.get('window');
+
+// Confetti particle component
+const ConfettiPiece = ({ delay }: { delay: number }) => {
+  const translateY = React.useRef(new Animated.Value(-100)).current;
+  const translateX = React.useRef(new Animated.Value(0)).current;
+  const rotation = React.useRef(new Animated.Value(0)).current;
+  const { width: screenWidth } = Dimensions.get('window');
+  const randomLeft = (Math.random() * screenWidth) - (screenWidth / 2);
+  const randomDuration = 2500 + Math.random() * 1000;
+  const emojis = ['🎉', '✨', '🌟', '🎊', '🎈'];
+  const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: screenHeight + 100,
+        duration: randomDuration,
+        delay: delay,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateX, {
+        toValue: randomLeft,
+        duration: randomDuration,
+        delay: delay,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      }),
+      Animated.timing(rotation, {
+        toValue: Math.random() > 0.5 ? 360 : -360,
+        duration: randomDuration,
+        delay: delay,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.confettiPiece,
+        {
+          transform: [
+            { translateY },
+            { translateX },
+            { rotate: rotation.interpolate({
+              inputRange: [0, 360],
+              outputRange: ['0deg', '360deg'],
+            }) },
+          ],
+        },
+      ]}
+    >
+      <Text style={styles.confettiEmoji}>{emoji}</Text>
+    </Animated.View>
+  );
+};
 
 export default function ProcessScreen({ navigation }: any) {
   const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch } = useMachineStore();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [mockSeconds, setMockSeconds] = React.useState(5);
+  const [showCelebration, setShowCelebration] = React.useState(false);
+  const [previousStep, setPreviousStep] = React.useState(0);
+  const [feedCompleted, setFeedCompleted] = React.useState(false);
+  const [compostCompleted, setCompostCompleted] = React.useState(false);
 
   React.useEffect(() => {
     if (currentBatch?.status === 'completed') {
-      // navigate to summary when batch finishes
-      navigation.navigate('Summary');
+      // Final completion - navigate to summary
+      const timer = setTimeout(() => {
+        navigation.navigate('Summary');
+      }, 3000);
+
+      return () => clearTimeout(timer);
     }
   }, [currentBatch?.status]);
+
+  // Detect feed completion (step 5) for feed or mixed batches
+  React.useEffect(() => {
+    if (currentBatch && !feedCompleted) {
+      const isFeedDone = (currentBatch.type === 'feed' && currentBatch.currentStep === 5) ||
+                         (currentBatch.type === 'mixed' && currentBatch.currentStep === 5 && previousStep < 5);
+      
+      if (isFeedDone) {
+        setFeedCompleted(true);
+        setShowCelebration(true);
+        
+        // Hide celebration after 2 seconds
+        const timer = setTimeout(() => {
+          setShowCelebration(false);
+        }, 2000);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+    setPreviousStep(currentBatch?.currentStep || 0);
+  }, [currentBatch?.currentStep, feedCompleted]);
+
+  // Detect compost completion for compost or mixed batches
+  React.useEffect(() => {
+    if (currentBatch && !compostCompleted) {
+      const isCompostDone = (currentBatch.type === 'compost' && currentBatch.currentStep === 4) ||
+                            (currentBatch.type === 'mixed' && currentBatch.currentStep === 9);
+      
+      if (isCompostDone) {
+        setCompostCompleted(true);
+        setShowCelebration(true);
+        
+        // Hide celebration after 2 seconds
+        const timer = setTimeout(() => {
+          setShowCelebration(false);
+        }, 2000);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentBatch?.currentStep, compostCompleted]);
 
   React.useEffect(() => {
     // Auto-scroll to Compost section when Feed is completed (for mixed batches)
@@ -139,6 +248,15 @@ export default function ProcessScreen({ navigation }: any) {
           </View>
         </View>
       </ScrollView>
+
+      {/* Confetti Celebration */}
+      {showCelebration && (
+        <View key={`confetti-${feedCompleted}-${compostCompleted}`} style={styles.confettiContainer}>
+          {Array.from({ length: 60 }).map((_, idx) => (
+            <ConfettiPiece key={idx} delay={idx * 20} />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -320,4 +438,39 @@ const styles = StyleSheet.create({
   },
   batchItem: { backgroundColor: colors.cardWhite, padding: 10, borderRadius: 8, marginBottom: 8 },
   batchText: { color: colors.primaryText, fontWeight: '600' },
+  confettiContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  confettiPiece: {
+    position: 'absolute',
+    top: -50,
+  },
+  confettiEmoji: {
+    fontSize: 30,
+  },
+  celebrationMessage: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  celebrationTitle: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  celebrationSubtext: {
+    fontSize: 16,
+    color: colors.primaryText,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 });

@@ -15,6 +15,8 @@ import { QrCode, Hash } from 'lucide-react-native';
 import { useMachineStore } from '../stores/machineStore';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
+import { fetchWithAuth, getApiBaseUrl } from '../config/api';
+import { auth } from '../config/firebase';
 
 export default function AddMachineScreen({ navigation }: any) {
   const [machineId, setMachineId] = useState('');
@@ -25,8 +27,9 @@ export default function AddMachineScreen({ navigation }: any) {
   const [addedMachineName, setAddedMachineName] = useState('');
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleAddMachine = () => {
+  const handleAddMachine = async () => {
     if (!machineId.trim()) {
       setErrorMessage('Please enter a Machine ID');
       setErrorModalVisible(true);
@@ -39,17 +42,52 @@ export default function AddMachineScreen({ navigation }: any) {
       return;
     }
 
-    // In real app, validate with server here
-    const newMachine = {
-      id: Date.now().toString(),
-      name: machineName.trim(),
-      machineId: machineId.trim().toUpperCase(),
-      isOnline: Math.random() > 0.3, // Random for demo
-    };
+    setLoading(true);
 
-    addMachine(newMachine);
-    setAddedMachineName(newMachine.name);
-    setShowSuccessModal(true);
+    try {
+      // Register machine with API server
+      const apiUrl = await getApiBaseUrl();
+      if (!apiUrl) {
+        setErrorMessage('No API URL configured. Please set it in Settings.');
+        setErrorModalVisible(true);
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetchWithAuth('/machines/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          machineId: machineId.trim().toUpperCase(),
+          name: machineName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to register machine' }));
+        throw new Error(errorData.error || `Server returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      const registeredMachine = data.machine;
+
+      // Add machine to local store
+      const newMachine = {
+        id: registeredMachine.id || Date.now().toString(),
+        name: registeredMachine.name || machineName.trim(),
+        machineId: registeredMachine.machineId || machineId.trim().toUpperCase(),
+        isOnline: false, // Default to offline until MQTT connection
+      };
+
+      addMachine(newMachine);
+      setAddedMachineName(newMachine.name);
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      console.error('Error registering machine:', error);
+      setErrorMessage(error.message || 'Failed to register machine. Please try again.');
+      setErrorModalVisible(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleScanQR = () => {
@@ -113,11 +151,12 @@ export default function AddMachineScreen({ navigation }: any) {
 
         {/* Add Button */}
         <TouchableOpacity
-          style={[styles.addButton, { marginBottom: 16 + insets.bottom }]}
+          style={[styles.addButton, { marginBottom: 16 + insets.bottom }, loading && styles.addButtonDisabled]}
           onPress={handleAddMachine}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={styles.addButtonText}>Add Machine</Text>
+          <Text style={styles.addButtonText}>{loading ? 'Adding...' : 'Add Machine'}</Text>
         </TouchableOpacity>
 
         {/* Cancel Button */}
@@ -282,6 +321,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+  },
+  addButtonDisabled: {
+    opacity: 0.6,
   },
   addButtonText: {
     color: colors.cardWhite,

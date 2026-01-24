@@ -27,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useMachineStore } from '../stores/machineStore';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,7 @@ export default function RootNavigator() {
   const [minSplashDone, setMinSplashDone] = React.useState(false);
   const [hasSeenOnboarding, setHasSeenOnboarding] = React.useState<boolean | null>(null);
   const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
+  const resetMachineStore = useMachineStore((s) => s.reset);
 
   React.useEffect(() => {
     const t = setTimeout(() => setMinSplashDone(true), 900); // ensure splash shows briefly
@@ -63,6 +65,8 @@ export default function RootNavigator() {
         // Sync AsyncStorage with current auth state
         await AsyncStorage.setItem('loggedInUserEmail', user.email);
         await AsyncStorage.setItem('loggedInUserId', user.uid);
+      } else {
+        resetMachineStore();
       }
     });
 
@@ -100,6 +104,7 @@ export default function RootNavigator() {
                 await auth.signOut();
                 await AsyncStorage.removeItem('loggedInUserEmail');
                 await AsyncStorage.removeItem('loggedInUserId');
+                resetMachineStore();
                 navigationRef.current?.reset({
                   index: 0,
                   routes: [{ name: 'Login' }],

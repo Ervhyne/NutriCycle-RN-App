@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Linking,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { ChevronLeft, ChevronRight, KeyRound, Bell, Mail, Info, FileText, ShieldCheck, User } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, KeyRound, Bell, Mail, Info, FileText, ShieldCheck, User, Globe } from 'lucide-react-native';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { colors } from '../theme/colors';
@@ -17,7 +19,8 @@ import ScreenTitle from '../components/ScreenTitle';
 import { RootStackParamList } from '../navigation/types';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
+import { useMachineStore } from '../stores/machineStore';
 
 type SettingsScreenNavigationProp = NavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -26,6 +29,32 @@ export const SettingsScreen = () => {
   const insets = useSafeAreaInsets();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [apiModalVisible, setApiModalVisible] = useState(false);
+  const [apiInput, setApiInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const resetMachineStore = useMachineStore((s) => s.reset);
+
+  useEffect(() => {
+    loadApiUrl();
+  }, []);
+
+  const loadApiUrl = async () => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        const apiUrlRef = doc(db, 'url', 'firebase');
+        const apiUrlDoc = await getDoc(apiUrlRef);
+        if (apiUrlDoc.exists()) {
+          const data = apiUrlDoc.data();
+          if (data?.url) {
+            setApiInput(data.url);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading URL:', error);
+    }
+  };
 
   const handleLogOut = async () => {
     setLogoutModalVisible(true);
@@ -47,6 +76,7 @@ export const SettingsScreen = () => {
       await signOut(auth);
       await AsyncStorage.removeItem('loggedInUserEmail');
       await AsyncStorage.removeItem('loggedInUserId');
+      resetMachineStore();
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
@@ -69,6 +99,39 @@ export const SettingsScreen = () => {
       navigation.navigate('History');
     }
     // Settings tab is current tab, do nothing
+  };
+
+  const handleOpenURL = async () => {
+    setApiModalVisible(true);
+  };
+
+  const handleApiSubmit = async () => {
+    if (apiInput.trim()) {
+      setLoading(true);
+      try {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const apiUrlRef = doc(db, 'url', 'firebase');
+          await setDoc(apiUrlRef, {
+            url: apiInput.trim(),
+            updatedAt: new Date().toISOString(),
+            updatedBy: userId,
+          }, { merge: true });
+          
+          Alert.alert('Success', 'URL saved to Firestore successfully');
+          setApiModalVisible(false);
+        } else {
+          Alert.alert('Error', 'User not authenticated');
+        }
+      } catch (error) {
+        console.error('Error saving URL to Firestore:', error);
+        Alert.alert('Error', 'Failed to save URL to Firestore. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      Alert.alert('Error', 'Please enter a URL');
+    }
   };
 
   const SettingItem = ({ label, onPress, icon: Icon }:
@@ -123,6 +186,8 @@ export const SettingsScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support & Information</Text>
           <View style={styles.sectionContent}>
+            <SettingItem label="For api" icon={Globe} onPress={handleOpenURL} />
+            <View style={styles.divider} />
             <SettingItem label="Contact Us" icon={Mail} onPress={() => navigation.navigate('ContactUs')} />
             <View style={styles.divider} />
             <SettingItem label="About NutriCycle" icon={Info} onPress={() => navigation.navigate('AboutNutriCycle')} />
@@ -160,6 +225,42 @@ export const SettingsScreen = () => {
                 disabled={loggingOut}
               >
                 <Text style={styles.modalPrimaryText}>{loggingOut ? 'Logging out...' : 'Log Out'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {apiModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Firebase URL</Text>
+            <TextInput
+              style={styles.apiInput}
+              placeholder="Enter Firebase/Firestore URL"
+              placeholderTextColor={colors.mutedText}
+              value={apiInput}
+              onChangeText={setApiInput}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondaryButton}
+                onPress={() => {
+                  loadApiUrl();
+                  setApiModalVisible(false);
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.modalSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalPrimaryButton, loading && styles.modalPrimaryButtonDisabled]}
+                onPress={handleApiSubmit}
+                disabled={loading}
+              >
+                <Text style={styles.modalPrimaryText}>{loading ? 'Saving...' : 'Save'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -362,5 +463,15 @@ const styles = StyleSheet.create({
     color: colors.cardWhite,
     fontSize: 15,
     fontWeight: '700',
+  },
+  apiInput: {
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+    fontSize: 14,
+    color: colors.primaryText,
   },
 });

@@ -6,6 +6,8 @@ interface MachineStore {
   selectedMachine: Machine | null;
   selectMachine: (machine: Machine) => void;
   clearMachine: () => void;
+  setMachines: (machines: Machine[]) => void;
+  reset: () => void;
   
   // Machines List
   machines: Machine[];
@@ -42,6 +44,16 @@ export const useMachineStore = create<MachineStore>((set) => ({
   selectedMachine: null,
   selectMachine: (machine) => set({ selectedMachine: machine }),
   clearMachine: () => set({ selectedMachine: null }),
+
+  // Machines List setters
+  setMachines: (machines) => set({ machines }),
+  reset: () => set({
+    selectedMachine: null,
+    machines: [],
+    batches: [],
+    currentBatch: null,
+    telemetry: null,
+  }),
   
   // Machines List
   machines: [],

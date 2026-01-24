@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Plus, Wifi, WifiOff, Camera, MoreHorizontal, XCircle } from 'lucide-react-native';
 import MachineIcon from '../components/MachineIcon';
@@ -20,11 +21,13 @@ import { useMachineStore } from '../stores/machineStore';
 import { Machine } from '../types';
 import { colors } from '../theme/colors';
 import { NAV_HEIGHT } from '../components/BottomNavigation';
+import { auth } from '../config/firebase';
+import { fetchWithAuth, getApiBaseUrl } from '../config/api';
 
 
 
 export default function MachineLobbyScreen({ navigation }: any) {
-  const { machines, selectMachine, removeMachine, updateMachine, batches } = useMachineStore();
+  const { machines, selectMachine, removeMachine, updateMachine, batches, setMachines, clearMachine } = useMachineStore();
   const insets = useSafeAreaInsets();
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -33,6 +36,61 @@ export default function MachineLobbyScreen({ navigation }: any) {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [machineToEdit, setMachineToEdit] = useState<Machine | null>(null);
   const [editedName, setEditedName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchMachinesFromFirestore();
+  }, []);
+
+  const fetchMachinesFromFirestore = async () => {
+    setLoading(true);
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        console.log('No user logged in');
+        setLoading(false);
+        return;
+      }
+
+      // Read API base URL via helper (Settings or env)
+      const apiUrl = await getApiBaseUrl();
+      if (!apiUrl) {
+        Alert.alert('Error', 'No API URL configured. Please set it in Settings.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Fetching machines from API:', apiUrl);
+
+      // Fetch machines from the API server using the helper
+      const endpoint = `/machines?userId=${userId}`;
+      const response = await fetchWithAuth(endpoint, { method: 'GET' });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Fetch failed', {
+          status: response.status,
+          endpoint,
+          errorText,
+        });
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const machinesData = data.machines || data || [];
+
+      // Replace machines with the latest list from API to avoid stale entries between accounts
+      clearMachine();
+      setMachines(machinesData);
+
+      console.log(`Loaded ${machinesData.length} machines from API`);
+    } catch (error) {
+      console.error('Error fetching machines from API:', error);
+      Alert.alert('Error', 'Failed to load machines from server. Please check your API URL in Settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
 
@@ -45,6 +103,10 @@ export default function MachineLobbyScreen({ navigation }: any) {
 
   const handleAddMachine = () => {
     navigation.navigate('AddMachine');
+  };
+
+  const handleRefresh = () => {
+    fetchMachinesFromFirestore();
   };
 
 
@@ -188,7 +250,12 @@ export default function MachineLobbyScreen({ navigation }: any) {
       </View>
 
       {/* Machines List */}
-      {machines.length === 0 ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading machines...</Text>
+        </View>
+      ) : machines.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
             <XCircle size={56} color={colors.mutedText} />
@@ -203,6 +270,8 @@ export default function MachineLobbyScreen({ navigation }: any) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.listContent, { paddingBottom: 24 + insets.bottom + NAV_HEIGHT }]}
           showsVerticalScrollIndicator={false}
+          onRefresh={handleRefresh}
+          refreshing={loading}
         />
       )}
 
@@ -599,5 +668,16 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     backgroundColor: colors.cardWhite,
     marginBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.mutedText,
+    marginTop: 16,
   },
 });
