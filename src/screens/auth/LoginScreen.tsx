@@ -98,6 +98,8 @@ export const LoginScreen = () => {
       // Sign in to Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const userId = userCredential.user.uid;
+      // Retrieve Firebase ID token (Bearer token). Force refresh to ensure it's valid.
+      const idToken = await userCredential.user.getIdToken(true);
 
       // Check for existing active session in Firestore
       const sessionRef = doc(db, 'activeSessions', userId);
@@ -138,7 +140,25 @@ export const LoginScreen = () => {
       await Promise.all([
         AsyncStorage.setItem('loggedInUserEmail', email.trim().toLowerCase()),
         AsyncStorage.setItem('loggedInUserId', userId),
+        AsyncStorage.setItem('authToken', idToken),
       ]);
+
+      // Settings document (without persisting tokens)
+      const settingsRef = doc(db, 'url', 'firebase');
+
+      // Conditionally set base API URL in Settings if missing (so Machines can read it)
+      try {
+        const currentSettings = await getDoc(settingsRef);
+        const hasUrl = currentSettings.exists() && !!(currentSettings.data() as any)?.url;
+        if (!hasUrl) {
+          const baseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://unmandated-subprostatic-ja.ngrok-free.dev').toString().trim();
+          if (baseUrl) {
+            await setDoc(settingsRef, { url: baseUrl }, { merge: true });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to set base API URL in Settings:', e);
+      }
 
       setLoading(false);
       navigation.reset({
@@ -175,6 +195,8 @@ export const LoginScreen = () => {
       }
 
       const userId = currentUser.uid;
+      // Retrieve Firebase ID token (Bearer token). Force refresh to ensure it's valid.
+      const idToken = await currentUser.getIdToken(true);
 
       // Get the device ID
       let deviceId = await AsyncStorage.getItem('deviceSessionId');
@@ -198,7 +220,25 @@ export const LoginScreen = () => {
       await Promise.all([
         AsyncStorage.setItem('loggedInUserEmail', pendingLoginCredentials.email),
         AsyncStorage.setItem('loggedInUserId', userId),
+        AsyncStorage.setItem('authToken', idToken),
       ]);
+
+      // Settings document (without persisting tokens)
+      const settingsRef = doc(db, 'url', 'firebase');
+
+      // Conditionally set base API URL in Settings if missing (so Machines can read it)
+      try {
+        const currentSettings = await getDoc(settingsRef);
+        const hasUrl = currentSettings.exists() && !!(currentSettings.data() as any)?.url;
+        if (!hasUrl) {
+          const baseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://unmandated-subprostatic-ja.ngrok-free.dev').toString().trim();
+          if (baseUrl) {
+            await setDoc(settingsRef, { url: baseUrl }, { merge: true });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to set base API URL in Settings:', e);
+      }
 
       setPendingLoginCredentials(null);
       setLoading(false);
