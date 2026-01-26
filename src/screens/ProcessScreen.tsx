@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Modal, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Modal, Animated, Easing, Dimensions, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
+import { ChevronRight } from 'lucide-react-native';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -164,7 +165,7 @@ export default function ProcessScreen({ navigation }: any) {
       'Recognition': require('../../assets/step1.png'),
       'Sorting': require('../../assets/sorting.gif'),
       'Grinding': require('../../assets/Grinder.gif'),
-      'Dehydration': require('../../assets/step4.png'),
+      'Dehydration': require('../../assets/Dehydration.gif'),
       'Completion': require('../../assets/step3.png'),
       'Vermicasting': require('../../assets/step3.png'),
     };
@@ -194,6 +195,14 @@ export default function ProcessScreen({ navigation }: any) {
               style={styles.activeImage} 
               resizeMode="contain" 
             />
+            <TouchableOpacity 
+              style={styles.nextButton}
+              onPress={() => advanceBatchStep()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.nextButtonText}>Next</Text>
+              <ChevronRight size={20} color={colors.cardWhite} strokeWidth={2.5} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -323,6 +332,22 @@ const styles = StyleSheet.create({
   activeImage: {
     width: 210,
     height: 210,
+  },
+  nextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 12,
+    gap: 8,
+  },
+  nextButtonText: {
+    color: colors.cardWhite,
+    fontWeight: '700',
+    fontSize: 16,
   },
   timeline: {
     backgroundColor: colors.cardWhite,

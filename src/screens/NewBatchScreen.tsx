@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal 
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
+import { fetchWithAuth } from '../config/api';
 
 
 export default function NewBatchScreen({ navigation }: any) {
@@ -24,7 +25,7 @@ export default function NewBatchScreen({ navigation }: any) {
   // show batch id to user
   const generatedId = React.useMemo(() => Math.random().toString(36).substring(2, 8).toUpperCase(), []);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!selectedMachine) {
       showModal('No machine selected', 'Please select a machine first.');
       return;
@@ -41,19 +42,48 @@ export default function NewBatchScreen({ navigation }: any) {
       return;
     }
 
-    const batch = {
-      id: generatedId,
-      machineId: selectedMachine.id,
-      type: 'mixed' as const,
-      status: 'queued' as const,
-      currentStep: 1 as const,
-      estimatedWeight: weightValue,
-    };
+    if (weightValue > 5) {
+      showModal('Weight Limit Exceeded', 'Maximum weight is 5 kg per batch.');
+      return;
+    }
 
-    addBatch(batch);
-    setCurrentBatch(batch);
-    // navigate into session for this batch
-    navigation.navigate('BatchSession', { batchId: batch.id });
+    try {
+      const res = await fetchWithAuth('/batches', {
+        method: 'POST',
+        body: JSON.stringify({
+          // Server expects external machineId (e.g., "NC-001")
+          machineId: selectedMachine.machineId,
+          estimatedWeight: weightValue,
+        }),
+      });
+      const serverBatch = await res.json();
+
+      // Map server batch to local store shape
+      const batch = {
+        id: serverBatch.id as string,
+        machineId: selectedMachine.id, // local linkage to selected machine
+        type: 'mixed' as const,
+        status: 'running' as const,
+        currentStep: 1 as const,
+        estimatedWeight: weightValue,
+      };
+
+      addBatch(batch);
+      setCurrentBatch(batch);
+      navigation.navigate('BatchSession', { batchId: batch.id });
+    } catch (err: any) {
+      const msg = (err?.message || 'Failed to create batch').toString();
+      // Surface common server messages nicely
+      if (msg.includes('machine_not_found')) {
+        showModal('Machine Not Found', 'This machine ID is not registered. Please add the machine first.');
+      } else if (msg.includes('already has an active batch')) {
+        showModal('Batch In Progress', 'This machine already has an active batch. Please complete or cancel it first.');
+      } else if (msg.includes('estimatedWeight')) {
+        showModal('Invalid Weight', 'Estimated weight must be greater than 0 and not exceed 5 kg.');
+      } else {
+        showModal('Error', msg);
+      }
+    }
   };
 
   return (

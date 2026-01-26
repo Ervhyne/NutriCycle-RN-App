@@ -1,18 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Plus, ChevronRight, ChevronLeft, Calendar } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
 import { LineChart } from 'react-native-chart-kit';
 import HistoryDetailsModal, { type HistoryDetailsItem } from '../components/HistoryDetailsModal';
 import { useMachineStore } from '../stores/machineStore';
+import { fetchWithAuth } from '../config/api';
 
 const screenWidth = Dimensions.get('window').width - 64;
+
+interface Batch {
+  id: string;
+  batchNumber?: string;
+  machineId: string;
+  estimatedWeight: number;
+  actualWeight?: number;
+  status: string;
+  createdAt: string;
+  completedAt?: string;
+}
 
 export default function DashboardScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { batches, setCurrentBatch, selectedMachine } = useMachineStore();
+  const [serverBatches, setServerBatches] = useState<Batch[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
+
+  useEffect(() => {
+    fetchServerBatches();
+  }, [selectedMachine?.id]);
+
+  const fetchServerBatches = async () => {
+    try {
+      setLoadingBatches(true);
+      const endpoint = selectedMachine?.machineId 
+        ? `/batches?machineId=${selectedMachine.machineId}`
+        : '/batches';
+      const res = await fetchWithAuth(endpoint);
+      const data = await res.json();
+      setServerBatches(Array.isArray(data) ? data : data.batches || []);
+    } catch (err) {
+      console.error('Failed to fetch batches:', err);
+      setServerBatches([]);
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
 
   const machineName = selectedMachine?.name ?? 'Select a machine';
   const machineLabel = machineName;
@@ -134,25 +169,26 @@ export default function DashboardScreen({ navigation }: any) {
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Recent Activity</Text>
-        {recentBatches.length === 0 ? (
+        {loadingBatches ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : serverBatches.length === 0 ? (
           <Text style={styles.text}>No batch activity yet.</Text>
         ) : (
-          recentBatches.map((b) => (
+          serverBatches.slice(0, 3).map((b) => (
             <View key={b.id} style={styles.batchItem}>
               <View style={styles.batchTopRow}>
-                <Text style={styles.batchId}>{b.id}</Text>
+                <Text style={styles.batchId}>{b.batchNumber || b.id}</Text>
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusText}>{b.status}</Text>
                 </View>
               </View>
               <View style={styles.batchBottomRow}>
-                <Text style={styles.batchMeta}>{b.type}</Text>
+                <Text style={styles.batchMeta}>{b.actualWeight || b.estimatedWeight} kg</Text>
                 <TouchableOpacity
                   style={styles.viewButton}
-                  onPress={() => {
-                    setCurrentBatch(b);
-                    navigation.navigate('BatchSession', { batchId: b.id });
-                  }}
+                  onPress={() => navigation.navigate('BatchSession', { batchId: b.id })}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.viewButtonText}>View</Text>
@@ -201,6 +237,7 @@ const styles = StyleSheet.create({
   batchMeta: { color: colors.mutedText, fontWeight: '600' },
   viewButton: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.primary, borderRadius: 10 },
   viewButtonText: { color: colors.cardWhite, fontWeight: '500' },
+  loadingContainer: { paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
   fab: { position: 'absolute', width: 56, height: 56, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   fabTextLarge: { color: colors.cardWhite, fontSize: 28, lineHeight: 30 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },

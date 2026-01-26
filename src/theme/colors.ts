@@ -19,6 +19,7 @@ export const colors = {
   // Status Colors
   warning: '#F9A825',
   danger: '#C62828',
+  error: '#C62828',
   success: '#2E7D32',
   
   // Additional UI Colors

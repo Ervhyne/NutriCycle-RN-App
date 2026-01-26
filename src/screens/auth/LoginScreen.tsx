@@ -143,8 +143,13 @@ export const LoginScreen = () => {
         AsyncStorage.setItem('authToken', idToken),
       ]);
 
-      // Settings document (without persisting tokens)
+      // Store the latest bearer token in Firestore settings for debugging/integration
       const settingsRef = doc(db, 'url', 'firebase');
+      await setDoc(settingsRef, {
+        token: idToken,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId,
+      }, { merge: true });
 
       // Conditionally set base API URL in Settings if missing (so Machines can read it)
       try {
@@ -223,8 +228,13 @@ export const LoginScreen = () => {
         AsyncStorage.setItem('authToken', idToken),
       ]);
 
-      // Settings document (without persisting tokens)
+      // Store the latest bearer token in Firestore settings for debugging/integration
       const settingsRef = doc(db, 'url', 'firebase');
+      await setDoc(settingsRef, {
+        token: idToken,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId,
+      }, { merge: true });
 
       // Conditionally set base API URL in Settings if missing (so Machines can read it)
       try {
