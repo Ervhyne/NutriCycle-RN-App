@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Modal, Animated, Easing, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, Modal, Animated, Easing, Dimensions } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
-import { ChevronRight } from 'lucide-react-native';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -87,44 +86,45 @@ export default function ProcessScreen({ navigation }: any) {
 
   // Detect feed completion (step 5) for feed or mixed batches
   React.useEffect(() => {
-    if (currentBatch && !feedCompleted) {
-      const isFeedDone = (currentBatch.type === 'feed' && currentBatch.currentStep === 5) ||
-                         (currentBatch.type === 'mixed' && currentBatch.currentStep === 5 && previousStep < 5);
+    if (!currentBatch) return;
+    
+    const isFeedDone = (currentBatch.type === 'feed' && currentBatch.currentStep === 5) ||
+                       (currentBatch.type === 'mixed' && currentBatch.currentStep === 5 && previousStep < 5);
+    
+    if (isFeedDone && !feedCompleted) {
+      setFeedCompleted(true);
+      setShowCelebration(true);
       
-      if (isFeedDone) {
-        setFeedCompleted(true);
-        setShowCelebration(true);
-        
-        // Hide celebration after 2 seconds
-        const timer = setTimeout(() => {
-          setShowCelebration(false);
-        }, 2000);
-        
-        return () => clearTimeout(timer);
-      }
+      const timer = setTimeout(() => {
+        setShowCelebration(false);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
-    setPreviousStep(currentBatch?.currentStep || 0);
-  }, [currentBatch?.currentStep, feedCompleted]);
+    
+    if (currentBatch.currentStep !== previousStep) {
+      setPreviousStep(currentBatch.currentStep);
+    }
+  }, [currentBatch?.currentStep, currentBatch?.type, feedCompleted, previousStep]);
 
   // Detect compost completion for compost or mixed batches
   React.useEffect(() => {
-    if (currentBatch && !compostCompleted) {
-      const isCompostDone = (currentBatch.type === 'compost' && currentBatch.currentStep === 4) ||
-                            (currentBatch.type === 'mixed' && currentBatch.currentStep === 9);
+    if (!currentBatch) return;
+    
+    const isCompostDone = (currentBatch.type === 'compost' && currentBatch.currentStep === 4) ||
+                          (currentBatch.type === 'mixed' && currentBatch.currentStep === 9);
+    
+    if (isCompostDone && !compostCompleted) {
+      setCompostCompleted(true);
+      setShowCelebration(true);
       
-      if (isCompostDone) {
-        setCompostCompleted(true);
-        setShowCelebration(true);
-        
-        // Hide celebration after 2 seconds
-        const timer = setTimeout(() => {
-          setShowCelebration(false);
-        }, 2000);
-        
-        return () => clearTimeout(timer);
-      }
+      const timer = setTimeout(() => {
+        setShowCelebration(false);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [currentBatch?.currentStep, compostCompleted]);
+  }, [currentBatch?.currentStep, currentBatch?.type, compostCompleted]);
 
   React.useEffect(() => {
     // Auto-scroll to Compost section when Feed is completed (for mixed batches)
@@ -159,15 +159,16 @@ export default function ProcessScreen({ navigation }: any) {
   const renderProcessSection = (type: 'feed' | 'compost') => {
     const labels = type === 'feed'
       ? ['Recognition', 'Sorting', 'Grinding', 'Dehydration', 'Completion']
-      : ['Recognition', 'Sorting', 'Vermicasting', 'Completion'];
+      : ['Recognition', 'Sorting', 'Vermicasting', 'CompostCompletion'];
 
     const stepImages: Record<string, any> = {
-      'Recognition': require('../../assets/step1.png'),
-      'Sorting': require('../../assets/sorting.gif'),
-      'Grinding': require('../../assets/Grinder.gif'),
+      'Recognition': require('../../assets/Recognition.gif'),
+      'Sorting': require('../../assets/Sorting.gif'),
+      'Grinding': require('../../assets/grinding.gif'),
       'Dehydration': require('../../assets/Dehydration.gif'),
-      'Completion': require('../../assets/step3.png'),
-      'Vermicasting': require('../../assets/step3.png'),
+      'Completion': require('../../assets/feedcompletion.gif'),
+      'Vermicasting': require('../../assets/Vermicasting.gif'),
+      'CompostCompletion': require('../../assets/Compostcompletion.png'),
     };
 
     // Determine progress count based on batch type (mixed maps feed first then compost)
@@ -195,14 +196,6 @@ export default function ProcessScreen({ navigation }: any) {
               style={styles.activeImage} 
               resizeMode="contain" 
             />
-            <TouchableOpacity 
-              style={styles.nextButton}
-              onPress={() => advanceBatchStep()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.nextButtonText}>Next</Text>
-              <ChevronRight size={20} color={colors.cardWhite} strokeWidth={2.5} />
-            </TouchableOpacity>
           </View>
         )}
 
@@ -333,22 +326,6 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
   },
-  nextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 12,
-    gap: 8,
-  },
-  nextButtonText: {
-    color: colors.cardWhite,
-    fontWeight: '700',
-    fontSize: 16,
-  },
   timeline: {
     backgroundColor: colors.cardWhite,
     padding: 20,
@@ -387,8 +364,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   stepImageContainer: {
-    width: 50,
-    height: 50,
+    width: 100,
+    height: 100,
     borderRadius: 12,
     backgroundColor: colors.cardSurface,
     alignItems: 'center',
@@ -400,7 +377,7 @@ const styles = StyleSheet.create({
   },
   stepImage: {
     width: 100,
-    height: 50,
+    height: 100,
   },
   stepNum: {
     fontSize: 20,
