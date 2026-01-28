@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 import ScreenTitle from '../components/ScreenTitle';
@@ -15,6 +15,7 @@ export default function NewBatchScreen({ navigation }: any) {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const showModal = (title: string, message: string) => {
     setModalTitle(title);
@@ -47,6 +48,8 @@ export default function NewBatchScreen({ navigation }: any) {
       return;
     }
 
+    setIsLoading(true);
+
     try {
       const res = await fetchWithAuth('/batches', {
         method: 'POST',
@@ -58,20 +61,26 @@ export default function NewBatchScreen({ navigation }: any) {
       });
       const serverBatch = await res.json();
 
+      console.log('[NewBatch] Server response:', serverBatch);
+      console.log('[NewBatch] Batch ID from server:', serverBatch.id);
+
       // Map server batch to local store shape
       const batch = {
         id: serverBatch.id as string,
         machineId: selectedMachine.id, // local linkage to selected machine
         type: 'mixed' as const,
-        status: 'running' as const,
-        currentStep: 1 as const,
+        status: 'idle' as const,
+        currentStep: 0 as const,
         estimatedWeight: weightValue,
       };
+
+      console.log('[NewBatch] Mapped batch object:', batch);
 
       addBatch(batch);
       setCurrentBatch(batch);
       navigation.navigate('BatchSession', { batchId: batch.id });
     } catch (err: any) {
+      setIsLoading(false);
       const msg = (err?.message || 'Failed to create batch').toString();
       // Surface common server messages nicely
       if (msg.includes('machine_not_found')) {
@@ -106,11 +115,25 @@ export default function NewBatchScreen({ navigation }: any) {
         </View>
 
         <View>
-          <TouchableOpacity style={styles.createButton} onPress={handleCreate} activeOpacity={0.8}>
-            <Text style={styles.createText}>Start Batch</Text>
+          <TouchableOpacity 
+            style={[styles.createButton, isLoading && styles.createButtonDisabled]} 
+            onPress={handleCreate} 
+            activeOpacity={0.8}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.cardWhite} />
+            ) : (
+              <Text style={styles.createText}>Start Batch</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => navigation.goBack()} 
+            activeOpacity={0.8}
+            disabled={isLoading}
+          >
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -153,6 +176,7 @@ const styles = StyleSheet.create({
   optionTextActive: { color: colors.primary },
   input: { backgroundColor: colors.cardWhite, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, color: colors.primaryText },
   createButton: { backgroundColor: colors.primary, padding: 14, borderRadius: 12, marginTop: 24, alignItems: 'center' },
+  createButtonDisabled: { opacity: 0.6 },
   createText: { color: colors.cardWhite, fontWeight: '700' },
   cancelButton: { padding: 12, alignItems: 'center', marginTop: 12 },
   cancelText: { color: colors.mutedText },

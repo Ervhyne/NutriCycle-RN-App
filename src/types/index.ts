@@ -18,7 +18,7 @@ export interface Batch {
   id: string;
   machineId: string;
   type: ProcessType;
-  status: 'queued' | 'running' | 'paused' | 'completed' | 'error';
+  status: 'queued' | 'running' | 'idle' | 'completed' | 'error';
   currentStep: ProcessStep;
   startTime?: Date;
   endTime?: Date;
