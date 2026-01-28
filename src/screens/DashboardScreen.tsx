@@ -116,7 +116,7 @@ export default function DashboardScreen({ navigation }: any) {
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 80 + insets.bottom, flexGrow: 1 }}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Lobby')} activeOpacity={0.8}>
             <ChevronLeft size={26} color={colors.primaryText} strokeWidth={2.2} />
           </TouchableOpacity>
           <ScreenTitle style={styles.headerTitle}>Dashboard</ScreenTitle>

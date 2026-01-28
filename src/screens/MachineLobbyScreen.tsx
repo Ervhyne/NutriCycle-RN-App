@@ -126,12 +126,17 @@ export default function MachineLobbyScreen({ navigation }: any) {
     setDeleteModalVisible(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (machineToDelete) {
-      removeMachine(machineToDelete);
+      try {
+        await removeMachine(machineToDelete);
+        setDeleteModalVisible(false);
+        setMachineToDelete(null);
+      } catch (error) {
+        console.error('Failed to delete machine:', error);
+        Alert.alert('Error', 'Failed to delete machine. Please try again.');
+      }
     }
-    setDeleteModalVisible(false);
-    setMachineToDelete(null);
   };
 
   const cancelDelete = () => {
@@ -139,12 +144,17 @@ export default function MachineLobbyScreen({ navigation }: any) {
     setMachineToDelete(null);
   };
 
-  const confirmEditName = () => {
+  const confirmEditName = async () => {
     if (machineToEdit && editedName.trim()) {
-      updateMachine(machineToEdit.id, { name: editedName.trim() });
-      setEditModalVisible(false);
-      setMachineToEdit(null);
-      setEditedName('');
+      try {
+        await updateMachine(machineToEdit.id, { name: editedName.trim() });
+        setEditModalVisible(false);
+        setMachineToEdit(null);
+        setEditedName('');
+      } catch (error) {
+        console.error('Failed to update machine name:', error);
+        Alert.alert('Error', 'Failed to update machine name. Please try again.');
+      }
     }
   };
 
