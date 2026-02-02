@@ -5,8 +5,71 @@ import { ChevronLeft } from 'lucide-react-native';
 import BatchSessionNavigator from '../navigation/BatchSessionNavigator';
 import ScreenTitle from '../components/ScreenTitle';
 import { colors } from '../theme/colors';
+import { useMachineStore } from '../stores/machineStore';
+import { fetchWithAuth } from '../config/api';
+
+interface ServerBatch {
+  id: string;
+  batchNumber?: string;
+  machineId: string;
+  status: string;
+  estimatedWeight?: number;
+  actualWeight?: number;
+  startedAt?: string | null;
+  endedAt?: string | null;
+}
 
 export default function BatchSessionScreen({ navigation, route }: any) {
+  const { batches, addBatch, setCurrentBatch } = useMachineStore();
+  const batchId = route?.params?.batchId as string | undefined;
+
+  React.useEffect(() => {
+    if (!batchId) return;
+
+    const existing = batches.find((b) => b.id === batchId || b.batchNumber === batchId);
+    if (existing) {
+      setCurrentBatch(existing);
+      return;
+    }
+
+    const fetchBatch = async () => {
+      try {
+        const res = await fetchWithAuth(`/batches/${batchId}`);
+        const data: ServerBatch = await res.json();
+
+        const resolvedId = data.id;
+        const resolvedBatchNumber = data.batchNumber ?? undefined;
+        const existingByNumber = resolvedBatchNumber
+          ? batches.find((b) => b.batchNumber === resolvedBatchNumber)
+          : undefined;
+        if (existingByNumber) {
+          setCurrentBatch(existingByNumber);
+          return;
+        }
+
+        const localBatch = {
+          id: resolvedId,
+          batchNumber: resolvedBatchNumber,
+          machineId: data.machineId,
+          type: 'mixed' as const,
+          status: (data.status as any) ?? 'queued',
+          currentStep: 0 as const,
+          estimatedWeight: data.estimatedWeight,
+          actualWeight: data.actualWeight,
+          startTime: data.startedAt ? new Date(data.startedAt) : undefined,
+          endTime: data.endedAt ? new Date(data.endedAt) : undefined,
+        };
+
+        addBatch(localBatch);
+        setCurrentBatch(localBatch);
+      } catch (error) {
+        console.error('[BatchSession] Failed to load batch:', error);
+      }
+    };
+
+    fetchBatch();
+  }, [batchId, batches, addBatch, setCurrentBatch]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>

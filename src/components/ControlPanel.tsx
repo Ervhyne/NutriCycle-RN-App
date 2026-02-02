@@ -8,7 +8,7 @@ export default function ControlPanel() {
   const { startProcessing, stopProcessing, currentBatch, startBatchAPI, stopBatchAPI, createBatchProcess } = useMachineStore();
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [isStopped, setIsStopped] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingButton, setLoadingButton] = useState<'start' | 'stop' | null>(null);
 
   // Reset isStopped when a batch starts running, set stopped when idle
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function ControlPanel() {
       return;
     }
 
-    setLoading(true);
+    setLoadingButton('start');
     try {
       // Start the batch status to 'running'
       await startBatchAPI();
@@ -46,7 +46,7 @@ export default function ControlPanel() {
       console.error('Start batch error:', err);
       alert('Failed to start batch');
     } finally {
-      setLoading(false);
+      setLoadingButton(null);
     }
   };
 
@@ -58,7 +58,7 @@ export default function ControlPanel() {
     }
 
     setConfirmVisible(false);
-    setLoading(true);
+    setLoadingButton('stop');
     
     try {
       await stopBatchAPI();
@@ -68,7 +68,7 @@ export default function ControlPanel() {
       console.error('Stop batch error:', err);
       alert('Failed to stop batch');
     } finally {
-      setLoading(false);
+      setLoadingButton(null);
     }
   };
 
@@ -98,34 +98,34 @@ export default function ControlPanel() {
     }
   };
 
+  const isRunning = currentBatch?.status === 'running';
+  const startDisabled = isRunning || loadingButton !== null;
+  const stopDisabled = !isRunning || loadingButton !== null;
+
   return (
     <View style={styles.container}>
       <View style={styles.column}>
         <TouchableOpacity 
-          style={[styles.button, loading && styles.disabled]} 
+          style={[styles.button, startDisabled && styles.disabled]} 
           onPress={handleStartPress} 
-          activeOpacity={0.8}
-          disabled={loading}
+          activeOpacity={startDisabled ? 1 : 0.8}
+          disabled={startDisabled}
         >
-          {loading ? (
+          {loadingButton === 'start' ? (
             <ActivityIndicator size="small" color={colors.cardWhite} />
-          ) : (
-            <Play size={20} color={colors.cardWhite} />
-          )}
-          <Text style={styles.buttonText}>{loading ? 'Starting...' : 'Start'}</Text>
+          ) : null}
+          <Text style={styles.buttonText}>{loadingButton === 'start' ? 'Starting...' : 'Start'}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.button, styles.stop, isStopped && styles.disabled]} 
+          style={[styles.button, styles.stop, stopDisabled && styles.disabled]} 
           onPress={handleStopPress} 
-          activeOpacity={isStopped ? 1 : 0.8}
-          disabled={isStopped || loading}
+          activeOpacity={stopDisabled ? 1 : 0.8}
+          disabled={stopDisabled}
         >
-          {loading ? (
+          {loadingButton === 'stop' ? (
             <ActivityIndicator size="small" color={colors.cardWhite} />
-          ) : (
-            <StopCircle size={20} color={colors.cardWhite} />
-          )}
-          <Text style={styles.buttonText}>{loading ? 'Stopping...' : 'Stop'}</Text>
+          ) : null}
+          <Text style={styles.buttonText}>{loadingButton === 'stop' ? 'Stopping...' : 'Stop'}</Text>
         </TouchableOpacity>
       </View>
 

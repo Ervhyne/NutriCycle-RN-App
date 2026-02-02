@@ -57,6 +57,8 @@ export default function NewBatchScreen({ navigation }: any) {
           // Server expects external machineId (e.g., "NC-001")
           machineId: selectedMachine.machineId,
           estimatedWeight: weightValue,
+          // Send the generated batch ID to use in database
+          batchId: generatedId,
         }),
       });
       const serverBatch = await res.json();
@@ -64,9 +66,12 @@ export default function NewBatchScreen({ navigation }: any) {
       console.log('[NewBatch] Server response:', serverBatch);
       console.log('[NewBatch] Batch ID from server:', serverBatch.id);
 
+      const batchNumber = serverBatch.batchNumber ?? generatedId;
+
       // Map server batch to local store shape
       const batch = {
-        id: serverBatch.id as string,
+        id: serverBatch.id ?? batchNumber,
+        batchNumber,
         machineId: selectedMachine.id, // local linkage to selected machine
         type: 'mixed' as const,
         status: 'idle' as const,
