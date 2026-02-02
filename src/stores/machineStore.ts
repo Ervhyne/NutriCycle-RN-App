@@ -287,7 +287,8 @@ export const useMachineStore = create<MachineStore>((set) => ({
     }
     
     try {
-      console.log(`[Batch API] Starting batch ${currentBatch.id} - Updating Batch table status to "running"`);
+      console.log(`[Batch API] Starting batch - ID: ${currentBatch.id}, batchNumber: ${currentBatch.batchNumber}`);
+      console.log(`[Batch API] Full currentBatch:`, JSON.stringify(currentBatch, null, 2));
       
       const response = await fetchWithAuth(`/batches/${currentBatch.id}`, {
         method: 'PATCH',

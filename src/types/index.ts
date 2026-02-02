@@ -16,6 +16,7 @@ export type ProcessStep = number;
 
 export interface Batch {
   id: string;
+  batchNumber?: string;
   machineId: string;
   type: ProcessType;
   status: 'queued' | 'running' | 'idle' | 'completed' | 'error';
