@@ -37,7 +37,6 @@ module.exports = [
       '@typescript-eslint/no-require-imports': 'off',
       'no-undef': 'off',
       'no-console': 'off',
-      'no-useless-escape': 'off',
     },
   },
 ];
