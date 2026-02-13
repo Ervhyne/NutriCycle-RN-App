@@ -1,6 +1,54 @@
 import { create } from 'zustand';
-import { Machine, Batch, MachineTelemetry, ProcessStep, ProcessType } from '../types';
+import { Machine, Batch, BatchProcess, MachineTelemetry, ProcessStep, ProcessType } from '../types';
 import { fetchWithAuth } from '../config/api';
+
+let telemetryInterval: ReturnType<typeof setInterval> | null = null;
+
+const getRandomInRange = (min: number, max: number) => {
+  return Math.round(min + Math.random() * (max - min));
+};
+
+const clamp = (value: number, min: number, max: number) => {
+  return Math.max(min, Math.min(max, value));
+};
+
+const drift = (current: number | undefined, min: number, max: number, step: number) => {
+  const base = typeof current === 'number' && !Number.isNaN(current) && current > 0
+    ? current
+    : getRandomInRange(min, max);
+  const delta = Math.round((Math.random() * 2 - 1) * step);
+  return clamp(base + delta, min, max);
+};
+
+const startTelemetrySimulation = (set: any) => {
+  if (telemetryInterval) return;
+
+  telemetryInterval = setInterval(() => {
+    set((state: MachineStore) => {
+      if (state.telemetry?.motorState !== 'running') {
+        return {} as any;
+      }
+
+      const next: MachineTelemetry = {
+        motorState: 'running',
+        grinderRPM: drift(state.telemetry?.grinderRPM, 90, 110, 2),
+        dryerTemperature: drift(state.telemetry?.dryerTemperature, 33, 37, 1),
+        humidity: drift(state.telemetry?.humidity, 52, 58, 1),
+        diverterPosition: state.telemetry?.diverterPosition ?? 'neutral',
+        doorState: state.telemetry?.doorState ?? 'closed',
+      };
+
+      return { telemetry: next };
+    });
+  }, 2000);
+};
+
+const stopTelemetrySimulation = () => {
+  if (telemetryInterval) {
+    clearInterval(telemetryInterval);
+    telemetryInterval = null;
+  }
+};
 
 interface MachineStore {
   // Selected Machine
@@ -29,6 +77,11 @@ interface MachineStore {
   currentBatch: Batch | null;
   setCurrentBatch: (batch: Batch | null) => void;
   
+  // Current Batch Process
+  currentBatchProcess: BatchProcess | null;
+  setCurrentBatchProcess: (batchProcess: BatchProcess | null) => void;
+  fetchBatchProcess: () => Promise<void>;
+  
   // Telemetry
   telemetry: MachineTelemetry | null;
   updateTelemetry: (data: Partial<MachineTelemetry>) => void;
@@ -42,11 +95,17 @@ interface MachineStore {
   // API actions for batch control
   startBatchAPI: () => Promise<void>;
   stopBatchAPI: () => Promise<void>;
+  completeBatchAPI: () => Promise<void>;
   
   // API actions for batch process
   createBatchProcess: (type: 'feed' | 'compost') => Promise<any>;
   updateBatchProcessStage: (feedStatus?: string | null, compostStatus?: string | null) => Promise<any>;
   getBatchProcess: () => Promise<any>;
+  
+  // RPI control actions (send commands to Raspberry Pi)
+  startRPIProcessing: () => Promise<void>;
+  stopRPIProcessing: () => Promise<void>;
+  getRPIStatus: () => Promise<any>;
 }
 
 export const useMachineStore = create<MachineStore>((set) => ({
@@ -62,6 +121,7 @@ export const useMachineStore = create<MachineStore>((set) => ({
     machines: [],
     batches: [],
     currentBatch: null,
+    currentBatchProcess: null,
     telemetry: null,
   }),
   
@@ -159,19 +219,69 @@ export const useMachineStore = create<MachineStore>((set) => ({
   // Batches
   batches: [],
   addBatch: (batch) => set((state) => ({ batches: [...state.batches, batch] })),
-  updateBatch: (batchId, updates) => set((state) => ({
-    batches: state.batches.map((b) => b.id === batchId ? { ...b, ...updates } : b)
-  })),
+  updateBatch: (batchId, updates) => {
+    if (updates.status === 'running') {
+      startTelemetrySimulation(set);
+    }
+    if (updates.status === 'idle' || updates.status === 'completed' || updates.status === 'error') {
+      stopTelemetrySimulation();
+    }
+
+    return set((state) => ({
+      batches: state.batches.map((b) => b.id === batchId ? { ...b, ...updates } : b)
+    }));
+  },
   removeBatch: (batchId) => set((state) => ({
     batches: state.batches.filter((b) => b.id !== batchId)
   })),
   
   // Current Batch
   currentBatch: null,
-  setCurrentBatch: (batch) => set({ currentBatch: batch }),
+  setCurrentBatch: (batch) => {
+    if (batch?.status === 'running') {
+      startTelemetrySimulation(set);
+    } else {
+      stopTelemetrySimulation();
+    }
+    set({ currentBatch: batch });
+  },
+  
+  // Current Batch Process
+  currentBatchProcess: null,
+  setCurrentBatchProcess: (batchProcess) => set({ currentBatchProcess: batchProcess }),
+  fetchBatchProcess: async () => {
+    const { currentBatch } = useMachineStore.getState();
+    if (!currentBatch) {
+      console.log('[fetchBatchProcess] No current batch');
+      return;
+    }
+    
+    try {
+      console.log(`[fetchBatchProcess] Fetching process for batch: ${currentBatch.id}`);
+      const response = await fetchWithAuth(`/batches/${currentBatch.id}/process`, {
+        method: 'GET',
+      });
+      
+      const data = await response.json();
+      console.log('[fetchBatchProcess] Response:', data);
+      
+      if (data?.process) {
+        set({ currentBatchProcess: data.process });
+      }
+    } catch (error) {
+      console.error('[fetchBatchProcess] Error:', error);
+    }
+  },
   
   // Telemetry
-  telemetry: null,
+  telemetry: {
+    motorState: 'idle',
+    grinderRPM: 0,
+    dryerTemperature: 0,
+    humidity: 0,
+    diverterPosition: 'neutral',
+    doorState: 'closed',
+  },
   updateTelemetry: (data) => set((state) => ({ telemetry: { ...state.telemetry, ...data } as MachineTelemetry })),
 
   // Control actions
@@ -179,9 +289,9 @@ export const useMachineStore = create<MachineStore>((set) => ({
     // set telemetry and batch status
     const updatedTelemetry: MachineTelemetry = {
       motorState: 'running',
-      grinderRPM: state.telemetry?.grinderRPM ?? 0,
-      dryerTemperature: state.telemetry?.dryerTemperature ?? 0,
-      humidity: state.telemetry?.humidity ?? 0,
+      grinderRPM: drift(state.telemetry?.grinderRPM, 90, 110, 2),
+      dryerTemperature: drift(state.telemetry?.dryerTemperature, 33, 37, 1),
+      humidity: drift(state.telemetry?.humidity, 52, 58, 1),
       diverterPosition: state.telemetry?.diverterPosition ?? 'neutral',
       doorState: state.telemetry?.doorState ?? 'closed',
     };
@@ -194,17 +304,24 @@ export const useMachineStore = create<MachineStore>((set) => ({
       startTime: state.currentBatch.startTime ?? new Date() 
     } as Batch) : null;
 
+    startTelemetrySimulation(set);
+
     return {
       telemetry: updatedTelemetry,
       currentBatch: updatedBatch,
       batches: updatedBatch ? state.batches.map((b) => b.id === updatedBatch.id ? updatedBatch : b) : state.batches,
     };
   }),
-  pauseProcessing: () => set((state) => ({
+  pauseProcessing: () => {
+    stopTelemetrySimulation();
+    return set((state) => ({
     telemetry: { ...state.telemetry!, motorState: 'paused' } as MachineTelemetry,
     currentBatch: state.currentBatch ? ({ ...state.currentBatch, status: 'idle' } as Batch) : null,
-  })),
-  stopProcessing: () => set((state) => {
+    }));
+  },
+  stopProcessing: () => {
+    stopTelemetrySimulation();
+    return set((state) => {
     // Stop but keep the batch with current progress - don't mark as completed
     const updatedBatch = state.currentBatch ? { ...state.currentBatch, status: 'idle' } as Batch : null;
     const updatedBatches = updatedBatch ? state.batches.map((b) => b.id === updatedBatch.id ? updatedBatch : b) : state.batches;
@@ -214,7 +331,8 @@ export const useMachineStore = create<MachineStore>((set) => ({
       batches: updatedBatches,
       currentBatch: updatedBatch,  // Keep the batch so we can see progress
     };
-  }),
+    });
+  },
   advanceBatchStep: (batchId?: string) => set((state) => {
     const id = batchId ?? state.currentBatch?.id;
     if (!id) return {} as any;
@@ -269,14 +387,17 @@ export const useMachineStore = create<MachineStore>((set) => ({
       currentBatch: state.currentBatch && state.currentBatch.id === completed.id ? null : state.currentBatch,
     };
   }),
-  emergencyStop: () => set((state) => {
+  emergencyStop: () => {
+    stopTelemetrySimulation();
+    return set((state) => {
     const updatedBatches = state.currentBatch ? state.batches.map((b) => b.id === state.currentBatch!.id ? ({ ...b, status: 'error' } as Batch) : b) : state.batches;
     return {
       telemetry: { ...state.telemetry!, motorState: 'idle' } as MachineTelemetry,
       batches: updatedBatches,
       currentBatch: null,
     };
-  }),
+    });
+  },
   
   // API actions for batch control
   startBatchAPI: async () => {
@@ -302,6 +423,8 @@ export const useMachineStore = create<MachineStore>((set) => ({
       console.log('[Batch API] Batch status updated in database:', updatedBatch.status);
       console.log('[Batch API] Machine table status is NOT changed (remains online/offline)');
       
+      startTelemetrySimulation(set);
+
       set((state) => ({
         currentBatch: { ...state.currentBatch, status: 'running', startTime: updatedBatch.startedAt ? new Date(updatedBatch.startedAt) : state.currentBatch?.startTime } as Batch,
         batches: state.batches.map((b) => 
@@ -335,6 +458,8 @@ export const useMachineStore = create<MachineStore>((set) => ({
       console.log('[Batch API] Batch status updated in database:', updatedBatch.status);
       console.log('[Batch API] Machine table status is NOT changed (remains online/offline)');
       
+      stopTelemetrySimulation();
+
       set((state) => ({
         currentBatch: { ...state.currentBatch, status: 'idle' } as Batch,
         batches: state.batches.map((b) => 
@@ -345,6 +470,43 @@ export const useMachineStore = create<MachineStore>((set) => ({
       }));
     } catch (error) {
       console.error('[Batch API] Failed to stop batch:', error);
+      throw error;
+    }
+  },
+  
+  completeBatchAPI: async () => {
+    const { currentBatch } = useMachineStore.getState();
+    if (!currentBatch) {
+      console.error('No current batch to complete');
+      return;
+    }
+    
+    try {
+      console.log(`[Batch API] Completing batch ${currentBatch.id} - Updating Batch table status to "completed"`);
+      
+      const response = await fetchWithAuth(`/batches/${currentBatch.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ 
+          status: 'completed',
+          endedAt: new Date().toISOString()
+        }),
+      });
+      
+      const updatedBatch = await response.json();
+      console.log('[Batch API] Batch marked as completed in database:', updatedBatch.status);
+      
+      stopTelemetrySimulation();
+
+      set((state) => ({
+        currentBatch: { ...state.currentBatch, status: 'completed' } as Batch,
+        batches: state.batches.map((b) => 
+          b.id === currentBatch.id 
+            ? { ...b, status: 'completed', endTime: new Date() } as Batch
+            : b
+        ),
+      }));
+    } catch (error) {
+      console.error('[Batch API] Failed to complete batch:', error);
       throw error;
     }
   },
@@ -435,6 +597,94 @@ export const useMachineStore = create<MachineStore>((set) => ({
       return process;
     } catch (error) {
       console.error('[Process API] Failed to fetch process:', error);
+      return null;
+    }
+  },
+
+  // RPI control actions
+  startRPIProcessing: async () => {
+    const { currentBatch, selectedMachine } = useMachineStore.getState();
+    if (!currentBatch) {
+      console.error('[RPI API] No current batch to start');
+      throw new Error('No batch selected');
+    }
+
+    if (!selectedMachine?.id) {
+      console.error('[RPI API] No machine selected');
+      throw new Error('No machine selected');
+    }
+
+    try {
+      console.log(`[RPI API] Sending start command to port 8080 for batch ${currentBatch.id}, machine ${selectedMachine.id}`);
+      
+      const response = await fetchWithAuth('/rpi/start', {
+        method: 'POST',
+        body: JSON.stringify({
+          batchId: currentBatch.id,
+          machineId: selectedMachine.id,
+        }),
+      });
+      
+      const result = await response.json();
+      console.log('[RPI API] Start command sent:', result);
+      return result;
+    } catch (error) {
+      console.error('[RPI API] Failed to start RPI processing:', error);
+      throw error;
+    }
+  },
+
+  stopRPIProcessing: async () => {
+    const { currentBatch, selectedMachine } = useMachineStore.getState();
+    if (!currentBatch) {
+      console.error('[RPI API] No current batch to stop');
+      throw new Error('No batch selected');
+    }
+
+    if (!selectedMachine?.id) {
+      console.error('[RPI API] No machine selected');
+      throw new Error('No machine selected');
+    }
+
+    try {
+      console.log(`[RPI API] Sending stop command to port 8080 for batch ${currentBatch.id}, machine ${selectedMachine.id}`);
+      
+      const response = await fetchWithAuth('/rpi/stop', {
+        method: 'POST',
+        body: JSON.stringify({
+          batchId: currentBatch.id,
+          machineId: selectedMachine.id,
+        }),
+      });
+      
+      const result = await response.json();
+      console.log('[RPI API] Stop command sent:', result);
+      return result;
+    } catch (error) {
+      console.error('[RPI API] Failed to stop RPI processing:', error);
+      throw error;
+    }
+  },
+
+  getRPIStatus: async () => {
+    const { currentBatch } = useMachineStore.getState();
+    if (!currentBatch) {
+      console.error('[RPI API] No current batch to check status');
+      return null;
+    }
+
+    try {
+      console.log(`[RPI API] Fetching Raspberry Pi status for batch ${currentBatch.id}`);
+      
+      const response = await fetchWithAuth(`/rpi/status/${currentBatch.id}`, {
+        method: 'GET',
+      });
+      
+      const result = await response.json();
+      console.log('[RPI API] RPI status:', result);
+      return result;
+    } catch (error) {
+      console.error('[RPI API] Failed to fetch RPI status:', error);
       return null;
     }
   },

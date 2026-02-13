@@ -25,6 +25,55 @@ export interface Batch {
   endTime?: Date;
   estimatedWeight?: number;
   actualWeight?: number;
+  compostOutput?: number; // kg
+  feedOutput?: number; // kg
+}
+
+// Batch Process Types
+export interface BatchProcess {
+  id: string;
+  batchNumber: string;
+  startedAt?: Date | string;
+  completedAt?: Date | string;
+  feedOutputWeight?: number;
+  compostOutputWeight?: number;
+  feedStatus?: string;
+  compostStatus?: string;
+}
+
+// API Response Types (Backend data structure)
+export interface ApiBatch {
+  id: string;
+  batchNumber: string;
+  machineId: string;
+  userId: string;
+  estimatedWeight: number;
+  actualWeight?: number;
+  compostOutput?: number;
+  feedOutput?: number;
+  startedAt?: string;
+  endedAt?: string;
+  status: string;
+  createdAt: string;
+  process?: BatchProcess; // Linked BatchProcess data
+  machine?: {
+    id: string;
+    machineId: string;
+    name?: string;
+    status?: string;
+  };
+}
+
+export interface ApiMachine {
+  id: string;
+  machineId: string;
+  name?: string;
+  ownerId?: string;
+  status: string;
+  lastCommandAt?: string;
+  lastTelemetry?: any;
+  createdAt: string;
+  batches?: ApiBatch[]; // Linked batches with process data
 }
 
 // Telemetry Types

@@ -56,34 +56,82 @@ export default function DashboardScreen({ navigation }: any) {
     ? batches.filter((b) => b.machineId === selectedMachine.id)
     : batches;
 
-  const machineData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [{ 
-      data: [14, 19, 17, 23, 27, 31, 28],
-      color: (opacity = 1) => `rgba(46,125,50, ${opacity})`,
-      strokeWidth: 2,
-    }],
+  // Generate chart data from real batches (last 7 days)
+  const generateChartData = () => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return d.toDateString();
+    });
+
+    const data = last7Days.map(dateStr => {
+      const dayBatches = machineBatches.filter(b => {
+        const batchDate = b.endTime 
+          ? new Date(b.endTime).toDateString()
+          : b.startTime
+          ? new Date(b.startTime).toDateString()
+          : null;
+        return batchDate === dateStr;
+      });
+      return dayBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+    });
+
+    const dayLabels = last7Days.map(d => new Date(d).toLocaleDateString(undefined, { weekday: 'short' }));
+
+    return {
+      labels: dayLabels,
+      datasets: [{
+        data: data.length > 0 ? data : [0],
+        color: (opacity = 1) => `rgba(46,125,50, ${opacity})`,
+        strokeWidth: 2,
+      }],
+    };
   };
 
-  const outputHistory = [
-    { date: 'April 22', weight: '23 kg' },
-    { date: 'April 21', weight: '33 kg' },
-    { date: 'April 20', weight: '29 kg' },
-  ];
+  const machineData = generateChartData();
+
+  // Generate output history from real batches (deduplicated by batch number/id)
+  const outputHistoryMap = new Map();
+  machineBatches
+    .filter(b => b.endTime || b.startTime)
+    .sort((a, b) => {
+      const aTime = a.endTime ? new Date(a.endTime).getTime() : new Date(a.startTime!).getTime();
+      const bTime = b.endTime ? new Date(b.endTime).getTime() : new Date(b.startTime!).getTime();
+      return bTime - aTime;
+    })
+    .forEach(b => {
+      const key = b.batchNumber ?? b.id;
+      if (!outputHistoryMap.has(key)) {
+        outputHistoryMap.set(key, {
+          date: (b.endTime || b.startTime)
+            ? new Date(b.endTime || b.startTime!).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+            : 'Unknown',
+          weight: `${b.actualWeight ?? 0} kg`,
+        });
+      }
+    });
+  const outputHistory = Array.from(outputHistoryMap.values()).slice(0, 3);
 
   const totalOutput = machineBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
 
   const [historyOpen, setHistoryOpen] = React.useState(false);
 
-  const historyData: HistoryDetailsItem[] = (selectedMachine ? batches.filter((b) => b.machineId === selectedMachine.id) : batches)
+  const historySource = selectedMachine
+    ? batches.filter((b) => b.machineId === selectedMachine.id)
+    : batches;
+
+  const historyMap = new Map<string, HistoryDetailsItem>();
+  historySource
     .slice()
     .sort((a, b) => {
       const aTime = a.endTime ? new Date(a.endTime).getTime() : a.startTime ? new Date(a.startTime).getTime() : 0;
       const bTime = b.endTime ? new Date(b.endTime).getTime() : b.startTime ? new Date(b.startTime).getTime() : 0;
       return bTime - aTime;
     })
-    .slice(0, 20)
-    .map((b) => {
+    .forEach((b) => {
+      const key = b.batchNumber ?? b.id;
+      if (historyMap.has(key)) return;
+
       const total = b.actualWeight ?? 0;
       let feedKg = 0;
       let compostKg = 0;
@@ -99,8 +147,11 @@ export default function DashboardScreen({ navigation }: any) {
         : b.startTime
         ? new Date(b.startTime).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
         : 'Unknown';
-      return { date, batch: b.id, feedKg, compostKg } as HistoryDetailsItem;
+
+      historyMap.set(key, { date, batch: key, feedKg, compostKg });
     });
+
+  const historyData: HistoryDetailsItem[] = Array.from(historyMap.values()).slice(0, 20);
 
   // Recent activity: sort by endTime then startTime, newest first, limit to 3
   const recentBatches = batches

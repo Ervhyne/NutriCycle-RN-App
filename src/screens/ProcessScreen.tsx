@@ -65,7 +65,7 @@ const ConfettiPiece = ({ delay }: { delay: number }) => {
 };
 
 export default function ProcessScreen({ navigation }: any) {
-  const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch, startBatchAPI, stopBatchAPI, getBatchProcess, updateBatchProcessStage, createBatchProcess } = useMachineStore();
+  const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch, startBatchAPI, stopBatchAPI, completeBatchAPI, getBatchProcess, updateBatchProcessStage, createBatchProcess } = useMachineStore();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [showCelebration, setShowCelebration] = React.useState(false);
   const [previousStep, setPreviousStep] = React.useState(0);
@@ -75,6 +75,27 @@ export default function ProcessScreen({ navigation }: any) {
   const [fetchingProcess, setFetchingProcess] = React.useState(false);
   const [lastAdvancedStage, setLastAdvancedStage] = React.useState<string | null>(null);
   const [processInitialized, setProcessInitialized] = React.useState(false);
+  const autoAdvanceTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const [timeRemaining, setTimeRemaining] = React.useState(60); // Default 1 minute
+  const [isInTransition, setIsInTransition] = React.useState(false); // Flag for 5-sec transition periods
+  const [timerStopped, setTimerStopped] = React.useState(false); // Flag to indicate timer reached 0
+  const [currentStageKey, setCurrentStageKey] = React.useState(''); // Track current stage for GIF restart
+
+  // Get duration for current stage (in seconds)
+  const getCurrentStageDuration = () => {
+    const process = batchProcess?.process || batchProcess;
+    const feedStatus = process?.feedStatus;
+    const compostStatus = process?.compostStatus;
+
+    // Feed completed: 5 seconds before starting compost
+    if (feedStatus === 'Feed Completed' && !compostStatus) {
+      return 5;
+    }
+
+    // All feed and compost stages: 1 minute each
+    // (The 5-second transition after Vermicasting is handled in the timer logic)
+    return 60;
+  };
 
   React.useEffect(() => {
     if (currentBatch?.status === 'completed') {
@@ -86,6 +107,120 @@ export default function ProcessScreen({ navigation }: any) {
       return () => clearTimeout(timer);
     }
   }, [currentBatch?.status]);
+
+  // Auto-advance process based on dynamic stage duration
+  React.useEffect(() => {
+    if (!currentBatch || currentBatch.status !== 'running' || !batchProcess) {
+      // Clear timer if batch stops
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = null;
+      }
+      setTimeRemaining(60);
+      setIsInTransition(false);
+      setTimerStopped(false);
+      return;
+    }
+
+    const process = batchProcess?.process || batchProcess;
+    const currentFeedStatus = process?.feedStatus || '';
+    const currentCompostStatus = process?.compostStatus || '';
+    const stageKey = `${currentFeedStatus}-${currentCompostStatus}`;
+    
+    // Check if stage has changed
+    if (stageKey !== currentStageKey) {
+      console.log('[ProcessScreen] Stage changed, resetting timer');
+      setCurrentStageKey(stageKey);
+      setTimerStopped(false);
+      setIsInTransition(false);
+      
+      // Get duration for new stage
+      const stageDuration = getCurrentStageDuration();
+      setTimeRemaining(stageDuration);
+    }
+
+    // Don't start a new timer if current one is stopped at 0
+    if (timerStopped) {
+      console.log('[ProcessScreen] Timer stopped at 0, waiting for stage advance');
+      return;
+    }
+
+    // Start 1-second countdown timer
+    console.log(`[ProcessScreen] Starting timer for stage: ${stageKey}`);
+    autoAdvanceTimerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          // Time's up - check if we need a transition period
+          const process = batchProcess?.process || batchProcess;
+          const compostStatus = process?.compostStatus;
+          
+          // If Compost Completed, stop immediately without transition
+          if (compostStatus === 'Compost Completed') {
+            console.log('[ProcessScreen] Compost completed, stopping timer immediately');
+            setIsInTransition(false); // Reset transition flag
+            setTimerStopped(true); // Stop timer at 0
+            
+            // Clear the interval
+            if (autoAdvanceTimerRef.current) {
+              clearInterval(autoAdvanceTimerRef.current);
+              autoAdvanceTimerRef.current = null;
+            }
+            
+            return 0; // Stay at 0
+          }
+          
+          // If we just finished Vermicasting, start 5-second transition
+          if (compostStatus === 'Vermicasting' && !isInTransition) {
+            console.log('[ProcessScreen] Vermicasting complete, starting 5-second transition');
+            setIsInTransition(true);
+            return 5; // Start 5-second countdown
+          }
+          
+          // If we finished the 5-second transition after Vermicasting, advance to Compost Completed
+          if (compostStatus === 'Vermicasting' && isInTransition) {
+            console.log('[ProcessScreen] 5-second transition complete, advancing to Compost Completed');
+            setIsInTransition(false); // Reset transition flag
+            setTimerStopped(true); // Stop timer at 0
+            
+            // Clear the interval
+            if (autoAdvanceTimerRef.current) {
+              clearInterval(autoAdvanceTimerRef.current);
+              autoAdvanceTimerRef.current = null;
+            }
+            
+            // Advance to next stage
+            Promise.resolve().then(() => handleNextClick());
+            
+            return 0; // Stay at 0
+          }
+          
+          // Otherwise, advance to next step and stop timer
+          console.log('[ProcessScreen] Timer reached 0, stopping and advancing');
+          setIsInTransition(false); // Reset transition flag
+          setTimerStopped(true); // Stop timer at 0
+          
+          // Clear the interval
+          if (autoAdvanceTimerRef.current) {
+            clearInterval(autoAdvanceTimerRef.current);
+            autoAdvanceTimerRef.current = null;
+          }
+          
+          // Advance to next stage
+          Promise.resolve().then(() => handleNextClick());
+          
+          return 0; // Stay at 0
+        }
+        return prev - 1;
+      });
+    }, 1000); // Update every second
+
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearInterval(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = null;
+      }
+    };
+  }, [currentBatch?.status, batchProcess, batchProcess?.process?.feedStatus, batchProcess?.process?.compostStatus, timerStopped, currentStageKey]);
 
   // Fetch batch process data from database when batch starts
   React.useEffect(() => {
@@ -153,7 +288,7 @@ export default function ProcessScreen({ navigation }: any) {
     console.log('[ProcessScreen] batchProcess:', batchProcess);
     console.log('[ProcessScreen] JSON.stringify:', JSON.stringify(batchProcess, null, 2));
 
-    const feedStages = ['Sorting', 'Grinding', 'Dehydration', 'feed completed'];
+    const feedStages = ['Sorting', 'Grinding', 'Dehydration', 'Feed Completed'];
     const compostStages = ['Vermicasting', 'Compost Completed'];
 
     // Get the process object (API returns { batchId, process: {...} })
@@ -171,7 +306,7 @@ export default function ProcessScreen({ navigation }: any) {
 
     try {
       // Advance feed if not completed
-      if (currentFeedStatus && currentFeedStatus !== 'feed completed') {
+      if (currentFeedStatus && currentFeedStatus !== 'Feed Completed') {
         const feedIndex = feedStages.indexOf(currentFeedStatus);
         console.log('[ProcessScreen] Feed index:', feedIndex, 'in stages:', feedStages);
         
@@ -206,7 +341,7 @@ export default function ProcessScreen({ navigation }: any) {
       // Advance compost if feed is completed OR if we're already in compost mode
       console.log('[ProcessScreen] Checking compost advancement. Feed status:', currentFeedStatus, 'Compost status:', currentCompostStatus);
       
-      if (currentFeedStatus === 'feed completed' || currentCompostStatus) {
+      if (currentFeedStatus === 'Feed Completed' || currentCompostStatus) {
         // If compost hasn't started yet, initialize it
         if (!currentCompostStatus) {
           console.log('[ProcessScreen] Feed completed, starting compost with Vermicasting');
@@ -242,12 +377,21 @@ export default function ProcessScreen({ navigation }: any) {
               console.log('[ProcessScreen] Setting batchProcess to:', fresh);
               setBatchProcess(fresh);
               
-              // If we just completed compost, navigate to summary
+              // If we just completed compost, mark batch as completed
               if (nextCompostStatus === 'Compost Completed') {
-                console.log('[ProcessScreen] Compost completed! Navigating to Summary in 5 seconds...');
+                console.log('[ProcessScreen] Compost completed! Marking batch as completed...');
+                
+                try {
+                  await completeBatchAPI();
+                  console.log('[ProcessScreen] Batch marked as completed in database');
+                } catch (error) {
+                  console.error('[ProcessScreen] Failed to mark batch as completed:', error);
+                }
+                
+                console.log('[ProcessScreen] Navigating to Summary in 2 seconds...');
                 setTimeout(() => {
                   navigation.navigate('Summary');
-                }, 5000);
+                }, 2000);
               }
             } else {
               console.error('[ProcessScreen] Failed to get fresh data from DB');
@@ -323,14 +467,14 @@ export default function ProcessScreen({ navigation }: any) {
 
   const renderProcessSection = (type: 'feed' | 'compost') => {
     const labels = type === 'feed'
-      ? ['Sorting', 'Grinding', 'Dehydration', 'feed completed']
+      ? ['Sorting', 'Grinding', 'Dehydration', 'Feed Completed']
       : ['Vermicasting', 'Compost Completed'];
 
     const stepImages: Record<string, any> = {
       'Sorting': require('../../assets/Sorting.gif'),
       'Grinding': require('../../assets/grinding.gif'),
       'Dehydration': require('../../assets/Dehydration.gif'),
-      'feed completed': require('../../assets/feedcompletion.gif'),
+      'Feed Completed': require('../../assets/feedcompletion.gif'),
       'Vermicasting': require('../../assets/Vermicasting.gif'),
       'Compost Completed': require('../../assets/Compostcompletion.png'),
     };
@@ -363,7 +507,7 @@ export default function ProcessScreen({ navigation }: any) {
       isButtonDisabled = true;
     } else if (type === 'feed') {
       // For feed: disable only if feed completed AND compost has already started
-      isButtonDisabled = process?.feedStatus === 'feed completed' && process?.compostStatus;
+      isButtonDisabled = process?.feedStatus === 'Feed Completed' && process?.compostStatus;
     } else if (type === 'compost') {
       // For compost: disable only if compost is completed
       isButtonDisabled = process?.compostStatus === 'Compost Completed';
@@ -386,9 +530,10 @@ export default function ProcessScreen({ navigation }: any) {
         {(
           <View style={styles.activeImageSection}>
             <Image 
+              key={`gif-${type}-${imageKey}-${currentStageKey}`}
               source={stepImages[imageKey]} 
               style={styles.activeImage} 
-              resizeMode="contain" 
+              resizeMode="contain"
             />
           </View>
         )}
@@ -411,21 +556,20 @@ export default function ProcessScreen({ navigation }: any) {
           })}
         </View>
 
-        {/* Next Button */}
-        <TouchableOpacity 
-          style={[styles.nextButton, (isButtonDisabled) && styles.nextButtonDisabled]}
-          onPress={handleNextClick}
-          disabled={isButtonDisabled}
-        >
-          <Text style={styles.nextButtonText}>Next →</Text>
-        </TouchableOpacity>
+        {/* Timer Display */}
+        {currentBatch?.status === 'running' && !isButtonDisabled && !timerStopped && timeRemaining > 0 && (
+          <View style={styles.timerCard}>
+            <Text style={styles.timerLabel}>Next Stage In</Text>
+            <Text style={styles.timerValue}>{Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}</Text>
+          </View>
+        )}
       </View>
     );
   };
 
   // Determine which section to show based on batch progress
   const process = batchProcess?.process || batchProcess;
-  const feedCompleteFromDB = process?.feedStatus === 'feed completed';
+  const feedCompleteFromDB = process?.feedStatus === 'Feed Completed';
   const compostStarted = process?.compostStatus && process.compostStatus !== '';
   
   // Show feed process until compost has actually started
@@ -519,8 +663,8 @@ const styles = StyleSheet.create({
   activeImageSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     backgroundColor: colors.cardSurface,
     borderRadius: 12,
     borderWidth: 1,
@@ -528,8 +672,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   activeImage: {
-    width: 200,
-    height: 250,
+    width: 320,
+    height: 260,
   },
   timeline: {
     backgroundColor: colors.cardWhite,

@@ -28,10 +28,15 @@ interface BatchRecord {
   machineName: string;
   batchNumber: string;
   date: string;
+  startDate: Date; // Raw start date for filtering
   outputDate: string;
   status: string;
   estimatedWeight?: number;
   actualWeight?: number;
+  compostOutput?: number;
+  feedOutput?: number;
+  compostStatus?: string;
+  feedStatus?: string;
 }
 
 export const HistoryScreen = () => {
@@ -75,28 +80,24 @@ export const HistoryScreen = () => {
 
       const batches = await response.json();
       
-      // Map API response to BatchRecord format
-      // Use a Set to track unique IDs and prevent duplicates
+      // Map API response to BatchRecord format - process data is included via relation
       const uniqueBatches = new Map<string, BatchRecord>();
       
       batches.forEach((batch: any) => {
         // Only add if not already in map (prevents duplicates)
         if (!uniqueBatches.has(batch.id)) {
+          const startDate = batch.startedAt ? new Date(batch.startedAt) : new Date(batch.createdAt);
+          
           uniqueBatches.set(batch.id, {
             id: batch.id,
             machineName: batch.machine?.name || batch.machine?.machineId || 'Unknown',
             batchNumber: batch.batchNumber,
-            date: batch.startedAt 
-              ? new Date(batch.startedAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : new Date(batch.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                }),
+            startDate: startDate,
+            date: startDate.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }),
             outputDate: batch.endedAt 
               ? new Date(batch.endedAt).toLocaleDateString('en-US', {
                   month: 'short',
@@ -107,6 +108,10 @@ export const HistoryScreen = () => {
             status: batch.status,
             estimatedWeight: batch.estimatedWeight,
             actualWeight: batch.actualWeight,
+            compostOutput: batch.process?.compostOutputWeight,
+            feedOutput: batch.process?.feedOutputWeight,
+            compostStatus: batch.process?.compostStatus,
+            feedStatus: batch.process?.feedStatus,
           });
         }
       });
@@ -151,8 +156,26 @@ export const HistoryScreen = () => {
     }
   };
 
+  const handleClearFilter = () => {
+    setSelectedDate(null);
+    setSelectedFilter('All Time');
+  };
+
   const closePicker = () => setShowPicker(false);
   const insets = useSafeAreaInsets();
+
+  // Filter batch history based on selected date (using raw start date)
+  const filteredBatchHistory = selectedDate
+    ? batchHistory.filter((batch) => {
+        const batchStartDate = batch.startDate;
+        const filterDate = new Date(selectedDate);
+        return (
+          batchStartDate.getDate() === filterDate.getDate() &&
+          batchStartDate.getMonth() === filterDate.getMonth() &&
+          batchStartDate.getFullYear() === filterDate.getFullYear()
+        );
+      })
+    : batchHistory;
 
 
   const renderBatchItem = ({ item }: { item: BatchRecord }) => (
@@ -182,7 +205,7 @@ export const HistoryScreen = () => {
       <View style={styles.batchBody}>
         <View style={styles.batchInfoGrid}>
           <View style={styles.batchInfoItem}>
-            <Text style={styles.infoLabel}>DATE</Text>
+            <Text style={styles.infoLabel}>START DATE</Text>
             <Text style={styles.infoValue}>{item.date}</Text>
           </View>
           <View style={styles.batchInfoItem}>
@@ -193,20 +216,30 @@ export const HistoryScreen = () => {
 
         <View style={styles.batchInfoGrid}>
           <View style={styles.batchInfoItem}>
-            <Text style={styles.infoLabel}>STATUS</Text>
-            <Text style={[styles.infoValue, { 
-              color: item.status === 'completed' ? colors.success : 
-                     item.status === 'running' ? colors.primary : 
-                     item.status === 'queued' ? '#F57C00' :
-                     colors.mutedText
-            }]}>
-              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+            <Text style={styles.infoLabel}>COMPOST OUTPUT</Text>
+            <Text style={[styles.infoValue, { color: colors.success, fontWeight: '700' }]}>
+              {item.compostOutput ? `${item.compostOutput} kg` : '--'}
             </Text>
+            {item.compostStatus && (
+              <Text style={styles.statusSubtext}>{item.compostStatus}</Text>
+            )}
           </View>
           <View style={styles.batchInfoItem}>
-            <Text style={styles.infoLabel}>WEIGHT</Text>
+            <Text style={styles.infoLabel}>FEED OUTPUT</Text>
+            <Text style={[styles.infoValue, { color: colors.primary, fontWeight: '700' }]}>
+              {item.feedOutput ? `${item.feedOutput} kg` : '--'}
+            </Text>
+            {item.feedStatus && (
+              <Text style={styles.statusSubtext}>{item.feedStatus}</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.batchInfoGrid}>
+          <View style={styles.batchInfoItem}>
+            <Text style={styles.infoLabel}>ESTIMATED WEIGHT</Text>
             <Text style={styles.infoValue}>
-              {item.actualWeight ? `${item.actualWeight}kg` : `~${item.estimatedWeight || 0}kg`}
+              {item.estimatedWeight ? `${item.estimatedWeight} kg` : '--'}
             </Text>
           </View>
         </View>
@@ -239,6 +272,11 @@ export const HistoryScreen = () => {
             <Text style={styles.filterText}>{selectedDate ? selectedFilter : 'All Time'}</Text>
             <Calendar size={20} color={colors.primary} />
           </TouchableOpacity>
+          {selectedDate && (
+            <Text style={styles.filterResultText}>
+              Showing {filteredBatchHistory.length} {filteredBatchHistory.length === 1 ? 'batch' : 'batches'}
+            </Text>
+          )}
         </View>
 
         {/* Batch History List or Empty State */}
@@ -257,14 +295,16 @@ export const HistoryScreen = () => {
                 <Text style={styles.filterText}>Retry</Text>
               </TouchableOpacity>
           </View>
-        ) : batchHistory.length === 0 ? (
+        ) : filteredBatchHistory.length === 0 ? (
           <View style={styles.emptyState}>
             <Clock size={64} color={colors.mutedText} strokeWidth={1} />
-            <Text style={styles.emptyText}>No batch history yet</Text>
+            <Text style={styles.emptyText}>
+              {selectedDate ? `No batches found for ${selectedFilter}` : 'No batch history yet'}
+            </Text>
           </View>
         ) : (
           <FlatList
-            data={batchHistory}
+            data={filteredBatchHistory}
             renderItem={renderBatchItem}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
@@ -330,6 +370,12 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingHorizontal: 16,
     marginBottom: 20,
+  },
+  filterResultText: {
+    fontSize: 12,
+    color: colors.mutedText,
+    marginTop: 8,
+    marginLeft: 4,
   },
   filterButton: {
     flexDirection: 'row',
@@ -420,6 +466,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.primaryText,
+  },
+  statusSubtext: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.mutedText,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   emptyState: {
     flex: 1,

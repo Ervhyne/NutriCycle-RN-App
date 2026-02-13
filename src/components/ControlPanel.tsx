@@ -9,6 +9,7 @@ export default function ControlPanel() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [isStopped, setIsStopped] = useState(false);
   const [loadingButton, setLoadingButton] = useState<'start' | 'stop' | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Reset isStopped when a batch starts running, set stopped when idle
   useEffect(() => {
@@ -32,6 +33,22 @@ export default function ControlPanel() {
     }
 
     setLoadingButton('start');
+    
+    // 5-second initialization countdown
+    setCountdown(5);
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownInterval);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Wait 5 seconds before starting
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
     try {
       // Start the batch status to 'running'
       await startBatchAPI();
@@ -47,6 +64,7 @@ export default function ControlPanel() {
       alert('Failed to start batch');
     } finally {
       setLoadingButton(null);
+      setCountdown(null);
     }
   };
 
@@ -114,7 +132,9 @@ export default function ControlPanel() {
           {loadingButton === 'start' ? (
             <ActivityIndicator size="small" color={colors.cardWhite} />
           ) : null}
-          <Text style={styles.buttonText}>{loadingButton === 'start' ? 'Starting...' : 'Start'}</Text>
+          <Text style={styles.buttonText}>
+            {countdown !== null ? `Initializing ${countdown}s` : loadingButton === 'start' ? 'Starting...' : 'Start'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.button, styles.stop, stopDisabled && styles.disabled]} 
