@@ -93,12 +93,9 @@ interface MachineStore {
   emergencyStop: () => void;
   
   // API actions for batch control
-  startBatchAPI: () => Promise<void>;
-  stopBatchAPI: () => Promise<void>;
   completeBatchAPI: () => Promise<void>;
-  
+
   // API actions for batch process
-  createBatchProcess: (type: 'feed' | 'compost') => Promise<any>;
   updateBatchProcessStage: (feedStatus?: string | null, compostStatus?: string | null) => Promise<any>;
   getBatchProcess: () => Promise<any>;
   
@@ -398,82 +395,8 @@ export const useMachineStore = create<MachineStore>((set) => ({
     };
     });
   },
-  
+
   // API actions for batch control
-  startBatchAPI: async () => {
-    const { currentBatch } = useMachineStore.getState();
-    if (!currentBatch) {
-      console.error('No current batch to start');
-      return;
-    }
-    
-    try {
-      console.log(`[Batch API] Starting batch - ID: ${currentBatch.id}, batchNumber: ${currentBatch.batchNumber}`);
-      console.log(`[Batch API] Full currentBatch:`, JSON.stringify(currentBatch, null, 2));
-      
-      const response = await fetchWithAuth(`/batches/${currentBatch.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ 
-          status: 'running',
-          startedAt: currentBatch.startTime ? undefined : new Date().toISOString()
-        }),
-      });
-      
-      const updatedBatch = await response.json();
-      console.log('[Batch API] Batch status updated in database:', updatedBatch.status);
-      console.log('[Batch API] Machine table status is NOT changed (remains online/offline)');
-      
-      startTelemetrySimulation(set);
-
-      set((state) => ({
-        currentBatch: { ...state.currentBatch, status: 'running', startTime: updatedBatch.startedAt ? new Date(updatedBatch.startedAt) : state.currentBatch?.startTime } as Batch,
-        batches: state.batches.map((b) => 
-          b.id === currentBatch.id 
-            ? { ...b, status: 'running', startTime: updatedBatch.startedAt ? new Date(updatedBatch.startedAt) : b.startTime } as Batch
-            : b
-        ),
-      }));
-    } catch (error) {
-      console.error('[Batch API] Failed to start batch:', error);
-      throw error;
-    }
-  },
-  
-  stopBatchAPI: async () => {
-    const { currentBatch } = useMachineStore.getState();
-    if (!currentBatch) {
-      console.error('No current batch to stop');
-      return;
-    }
-    
-    try {
-      console.log(`[Batch API] Stopping batch ${currentBatch.id} - Updating Batch table status to "idle"`);
-      
-      const response = await fetchWithAuth(`/batches/${currentBatch.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: 'idle' }),
-      });
-      
-      const updatedBatch = await response.json();
-      console.log('[Batch API] Batch status updated in database:', updatedBatch.status);
-      console.log('[Batch API] Machine table status is NOT changed (remains online/offline)');
-      
-      stopTelemetrySimulation();
-
-      set((state) => ({
-        currentBatch: { ...state.currentBatch, status: 'idle' } as Batch,
-        batches: state.batches.map((b) => 
-          b.id === currentBatch.id 
-            ? { ...b, status: 'idle' } as Batch
-            : b
-        ),
-      }));
-    } catch (error) {
-      console.error('[Batch API] Failed to stop batch:', error);
-      throw error;
-    }
-  },
-  
   completeBatchAPI: async () => {
     const { currentBatch } = useMachineStore.getState();
     if (!currentBatch) {
@@ -510,42 +433,7 @@ export const useMachineStore = create<MachineStore>((set) => ({
       throw error;
     }
   },
-  
-  // Process API actions
-  createBatchProcess: async (type: 'feed' | 'compost') => {
-    const { currentBatch } = useMachineStore.getState();
-    if (!currentBatch) {
-      console.error('No current batch to create process');
-      return;
-    }
-    
-    try {
-      console.log(`[Process API] Creating ${type} process for batch ${currentBatch.id}`);
-      
-      const body: any = {
-        startedAt: new Date().toISOString(),
-      };
 
-      if (type === 'feed') {
-        body.feedStatus = 'Sorting';
-      } else {
-        body.compostStatus = 'Vermicasting';
-      }
-      
-      const response = await fetchWithAuth(`/batches/${currentBatch.id}/process`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      
-      const process = await response.json();
-      console.log('[Process API] Process created:', process);
-      return process;
-    } catch (error) {
-      console.error('[Process API] Failed to create process:', error);
-      throw error;
-    }
-  },
-  
   updateBatchProcessStage: async (feedStatus?: string | null, compostStatus?: string | null) => {
     const { currentBatch } = useMachineStore.getState();
     if (!currentBatch) {

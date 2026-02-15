@@ -68,7 +68,6 @@ export interface ApiMachine {
   id: string;
   machineId: string;
   name?: string;
-  ownerId?: string;
   status: string;
   lastCommandAt?: string;
   lastTelemetry?: any;

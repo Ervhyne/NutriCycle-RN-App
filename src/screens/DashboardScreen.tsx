@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { Plus, ChevronRight, ChevronLeft, Calendar } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft, Calendar } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
 import { LineChart } from 'react-native-chart-kit';
@@ -237,27 +237,20 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
               <View style={styles.batchBottomRow}>
                 <Text style={styles.batchMeta}>{b.actualWeight || b.estimatedWeight} kg</Text>
-                <TouchableOpacity
-                  style={styles.viewButton}
-                  onPress={() => navigation.navigate('BatchSession', { batchId: b.id })}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.viewButtonText}>View</Text>
-                </TouchableOpacity>
+                {b.status?.toLowerCase() !== 'completed' && (
+                  <TouchableOpacity
+                    style={styles.viewButton}
+                    onPress={() => navigation.navigate('BatchSession', { batchId: b.id })}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.viewButtonText}>View</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))
         )}
       </ScrollView>
-
-      {/* New Batch FAB (bottom-right) */}
-      <TouchableOpacity
-        style={[styles.fab, { right: 16, bottom: 16 + insets.bottom }]}
-        onPress={() => navigation.navigate('NewBatch')}
-        activeOpacity={0.8}
-      >
-        <Plus size={20} color={colors.cardWhite} />
-      </TouchableOpacity> 
 
       {/* History Details Modal */}
       <HistoryDetailsModal
@@ -289,8 +282,6 @@ const styles = StyleSheet.create({
   viewButton: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.primary, borderRadius: 10 },
   viewButtonText: { color: colors.cardWhite, fontWeight: '500' },
   loadingContainer: { paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
-  fab: { position: 'absolute', width: 56, height: 56, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  fabTextLarge: { color: colors.cardWhite, fontSize: 28, lineHeight: 30 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   headerTitle: { flex: 1, textAlign: 'center' },

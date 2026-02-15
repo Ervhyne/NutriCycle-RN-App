@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert,
 import { WebView } from 'react-native-webview';
 import { colors } from '../theme/colors';
 import TelemetryCard from '../components/TelemetryCard';
-import ControlPanel from '../components/ControlPanel';
 import { useMachineStore } from '../stores/machineStore';
 
 export default function MachineScreen({ navigation }: any) {
@@ -177,9 +176,6 @@ export default function MachineScreen({ navigation }: any) {
 
         {/* Telemetry */}
         <TelemetryCard telemetry={telemetry} />
-
-        {/* Controls */}
-        <ControlPanel />
       </ScrollView>
     </View>
   );
