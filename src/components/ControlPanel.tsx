@@ -5,7 +5,7 @@ import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 
 export default function ControlPanel() {
-  const { startProcessing, stopProcessing, currentBatch, startBatchAPI, stopBatchAPI, createBatchProcess } = useMachineStore();
+  const { startProcessing, stopProcessing, currentBatch } = useMachineStore();
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [isStopped, setIsStopped] = useState(false);
   const [loadingButton, setLoadingButton] = useState<'start' | 'stop' | null>(null);
@@ -50,13 +50,6 @@ export default function ControlPanel() {
     await new Promise(resolve => setTimeout(resolve, 5000));
     
     try {
-      // Start the batch status to 'running'
-      await startBatchAPI();
-      
-      // Create process (feed or compost) - default to mixed/feed for now
-      const processType = currentBatch.type === 'compost' ? 'compost' : 'feed';
-      await createBatchProcess(processType);
-      
       setIsStopped(false);
       startProcessing();
     } catch (err) {
@@ -79,7 +72,6 @@ export default function ControlPanel() {
     setLoadingButton('stop');
     
     try {
-      await stopBatchAPI();
       setIsStopped(true);
       stopProcessing();
     } catch (err) {

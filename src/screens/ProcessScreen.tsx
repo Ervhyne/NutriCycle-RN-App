@@ -66,7 +66,7 @@ const ConfettiPiece = ({ delay }: { delay: number }) => {
 };
 
 export default function ProcessScreen({ navigation }: any) {
-  const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch, startBatchAPI, stopBatchAPI, completeBatchAPI, getBatchProcess, updateBatchProcessStage, createBatchProcess } = useMachineStore();
+  const { currentBatch, batches, startProcessing, advanceBatchStep, revertBatchStep, completeBatch, setCurrentBatch, completeBatchAPI, getBatchProcess, updateBatchProcessStage } = useMachineStore();
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [showCelebration, setShowCelebration] = React.useState(false);
   const [previousStep, setPreviousStep] = React.useState(0);
@@ -223,27 +223,18 @@ export default function ProcessScreen({ navigation }: any) {
         let process = await getBatchProcess();
         console.log('[ProcessScreen] Batch process fetched from DB:', process);
         
-        // If process doesn't exist yet, create it
+        // If process doesn't exist yet, skip creation
         if (!process || !process.process) {
-          console.log('[ProcessScreen] No process found, creating initial process');
+          console.log('[ProcessScreen] No process found, skipping creation');
           const batchType = currentBatch.type || 'feed';
           
           try {
-            if (batchType === 'feed' || batchType === 'mixed') {
-              await createBatchProcess('feed');
-              console.log('[ProcessScreen] Initial feed process created');
-            } else if (batchType === 'compost') {
-              await createBatchProcess('compost');
-              console.log('[ProcessScreen] Initial compost process created');
-            }
-            
-            // Re-fetch to get the full structure
+            // Re-fetch to ensure we have the latest process
             process = await getBatchProcess();
-            console.log('[ProcessScreen] Process after creation:', process);
-          } catch (createError) {
-            console.error('[ProcessScreen] Error creating process:', createError);
-            // If creation fails, try to fetch again in case it was created elsewhere
-            process = await getBatchProcess();
+            console.log('[ProcessScreen] Process after fetch:', process);
+          } catch (fetchError) {
+            console.error('[ProcessScreen] Error fetching process:', fetchError);
+            // If fetch fails, continue without process
           }
         }
         
