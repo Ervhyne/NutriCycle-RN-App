@@ -1,43 +1,83 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { colors } from '../theme/colors';
 import { MachineTelemetry } from '../types';
 
 export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemetry | null }) {
   const motorState = telemetry?.motorState ?? 'idle';
-  const rpm = telemetry?.grinderRPM ?? '--';
-  const temp = telemetry?.dryerTemperature ?? '--';
-  const humidity = telemetry?.humidity ?? '--';
+  const temp = telemetry?.dryerTemperature && telemetry.dryerTemperature > 0 ? telemetry.dryerTemperature : '--';
+  const humidity = telemetry?.humidity && telemetry.humidity > 0 ? telemetry.humidity : '--';
   const diverter = telemetry?.diverterPosition ?? '--';
-  const door = telemetry?.doorState ?? '--';
+
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [floatAnim]);
+
+  const floatStyle = {
+    transform: [
+      {
+        translateY: floatAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-2, 2],
+        }),
+      },
+    ],
+  };
+
+  const motorColor = motorState === 'running' ? colors.success : colors.warning;
 
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
-        <View style={styles.primaryMetric}>
-          <Text style={styles.label}>Motor</Text>
-          <View style={styles.pill}>
-            <Text style={styles.pillValue}>{motorState}</Text>
+      {/* Motor Status Section */}
+      <View style={styles.motorSection}>
+        <View style={styles.motorHeader}>
+          <Text style={styles.motorLabel}>Motor Status</Text>
+          <View style={[styles.motorBadge, { borderColor: motorColor }]}>
+            <View style={[styles.motorDot, { backgroundColor: motorColor }]} />
+            <Text style={[styles.motorText, { color: motorColor }]}>{motorState}</Text>
           </View>
-          <Text style={styles.subLabel}>Diverter: <Text style={styles.subValue}>{diverter}</Text></Text>
         </View>
-        <View style={styles.primaryMetric}>
-          <Text style={styles.label}>RPM</Text>
-          <Text style={styles.bigValue}>{rpm}</Text>
-          <Text style={styles.subLabel}>Door: <Text style={styles.subValue}>{door}</Text></Text>
+        <View style={styles.diverterInfo}>
+          <Text style={styles.diverterLabel}>Diverter Position:</Text>
+          <Text style={styles.diverterValue}>{diverter}</Text>
         </View>
       </View>
 
-      <View style={styles.divider} />
-
-      <View style={styles.gridRow}>
-        <View style={styles.gridItem}>
-          <Text style={styles.gridLabel}>Temp</Text>
-          <Text style={styles.gridValue}>{temp}°C</Text>
+      {/* Metrics Grid */}
+      <View style={styles.metricsGrid}>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricLabel}>Temperature</Text>
+          <View style={styles.metricContent}>
+            <Animated.Text style={[styles.metricValue, floatStyle]}>{temp}</Animated.Text>
+            <Text style={styles.metricUnit}>°C</Text>
+          </View>
         </View>
-        <View style={styles.gridItem}>
-          <Text style={styles.gridLabel}>Humidity</Text>
-          <Text style={styles.gridValue}>{humidity}%</Text>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricLabel}>Humidity</Text>
+          <View style={styles.metricContent}>
+            <Animated.Text style={[styles.metricValue, floatStyle]}>{humidity}</Animated.Text>
+            <Text style={styles.metricUnit}>%</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -46,98 +86,114 @@ export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemet
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.cardSurface,
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: colors.cardWhite,
+    padding: 20,
+    borderRadius: 20,
     marginHorizontal: 16,
     marginTop: 12,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 5,
   },
-  topRow: {
+  motorSection: {
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  motorHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    columnGap: 12,
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  primaryMetric: {
-    flex: 1,
-    backgroundColor: colors.softGreenSurface,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  label: {
-    fontSize: 12,
+  motorLabel: {
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.mutedText,
-    letterSpacing: 0.3,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  pill: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.cardWhite,
-    paddingHorizontal: 10,
+  motorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
+    borderWidth: 1.5,
+    gap: 6,
+    backgroundColor: '#FAFAFA',
+  },
+  motorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  motorText: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  diverterInfo: {
+    backgroundColor: colors.softGreenSurface,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    marginTop: 6,
   },
-  pillValue: {
+  diverterLabel: {
+    fontSize: 11,
+    color: colors.mutedText,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  diverterValue: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.primaryText,
+    textTransform: 'capitalize',
   },
-  bigValue: {
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    alignItems: 'center',
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: colors.mutedText,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 8,
+  },
+  metricContent: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  metricValue: {
     fontSize: 28,
     fontWeight: '800',
     color: colors.primary,
-    marginTop: 6,
   },
-  subLabel: {
-    marginTop: 8,
-    fontSize: 12,
+  metricUnit: {
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.mutedText,
-  },
-  subValue: {
-    fontWeight: '700',
-    color: colors.primaryText,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.cardBorder,
-    marginVertical: 14,
-    opacity: 0.7,
-  },
-  gridRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  gridItem: {
-    flex: 1,
-    backgroundColor: colors.cardWhite,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-  },
-  gridLabel: {
-    fontSize: 12,
-    color: colors.mutedText,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  gridValue: {
-    marginTop: 6,
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.primary,
   },
 });

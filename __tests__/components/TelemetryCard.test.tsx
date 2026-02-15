@@ -7,11 +7,10 @@ describe('TelemetryCard Component', () => {
   it('should render with null telemetry data', () => {
     const { getByText } = render(<TelemetryCard telemetry={null} />);
     
-    expect(getByText('Motor')).toBeTruthy();
+    expect(getByText('Motor Status')).toBeTruthy();
     expect(getByText('idle')).toBeTruthy();
-    // Multiple '--' elements exist, so just check that text is rendered
-    const allText = getByText('Motor').parent;
-    expect(allText).toBeTruthy();
+    expect(getByText('Temperature')).toBeTruthy();
+    expect(getByText('Humidity')).toBeTruthy();
   });
 
   it('should display telemetry data correctly', () => {
@@ -27,19 +26,17 @@ describe('TelemetryCard Component', () => {
     const { getByText } = render(<TelemetryCard telemetry={mockTelemetry} />);
     
     expect(getByText('running')).toBeTruthy();
-    expect(getByText('1500')).toBeTruthy();
-    expect(getByText('65°C')).toBeTruthy();
-    expect(getByText('50%')).toBeTruthy();
+    expect(getByText('65')).toBeTruthy();
+    expect(getByText('50')).toBeTruthy();
     expect(getByText('feed')).toBeTruthy();
-    expect(getByText('closed')).toBeTruthy();
   });
 
   it('should display default values when telemetry is null', () => {
-    const { getByText, getAllByText } = render(<TelemetryCard telemetry={null} />);
+    const { getAllByText } = render(<TelemetryCard telemetry={null} />);
     
-    expect(getByText('idle')).toBeTruthy(); // default motorState
-    // Multiple '--' elements exist, check count instead
-    expect(getAllByText('--').length).toBeGreaterThan(0);
+    expect(getAllByText('idle')).toBeTruthy(); // default motorState
+    const dashTexts = getAllByText('--');
+    expect(dashTexts.length).toBeGreaterThan(0); // default values (multiple dashes)
   });
 
   it('should update when telemetry data changes', () => {
@@ -57,7 +54,7 @@ describe('TelemetryCard Component', () => {
     );
 
     expect(getByText('idle')).toBeTruthy();
-    expect(getByText('0')).toBeTruthy();
+    expect(getByText('20')).toBeTruthy();
 
     const updatedTelemetry: MachineTelemetry = {
       motorState: 'running',
@@ -71,7 +68,7 @@ describe('TelemetryCard Component', () => {
     rerender(<TelemetryCard telemetry={updatedTelemetry} />);
 
     expect(getByText('running')).toBeTruthy();
-    expect(getByText('2000')).toBeTruthy();
+    expect(getByText('75')).toBeTruthy();
   });
 
   it('should handle motor states correctly', () => {
@@ -120,12 +117,11 @@ describe('TelemetryCard Component', () => {
       doorState: 'closed',
     };
 
-    const { getByText, root } = render(<TelemetryCard telemetry={mockTelemetry} />);
+    const { getByText } = render(<TelemetryCard telemetry={mockTelemetry} />);
     
     // Verify all required sections are present
-    expect(getByText('Motor')).toBeTruthy();
-    expect(getByText('RPM')).toBeTruthy();
-    expect(getByText('Temp')).toBeTruthy();
+    expect(getByText('Motor Status')).toBeTruthy();
+    expect(getByText('Temperature')).toBeTruthy();
     expect(getByText('Humidity')).toBeTruthy();
   });
 });

@@ -1,12 +1,13 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { colors } from '../theme/colors';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import ScreenTitle from '../components/ScreenTitle';
 import HistoryDetailsModal from '../components/HistoryDetailsModal';
 import { Filter, Calendar, ChevronRight, XCircle } from 'lucide-react-native';
-import { useMachineStore } from '../stores/machineStore';
+import { fetchWithAuth } from '../config/api';
+import { ApiBatch, ApiMachine } from '../types';
 
 const screenWidth = Dimensions.get('window').width - 32;
 const cardWidth = screenWidth;
@@ -24,11 +25,95 @@ type CardConfig = {
 
 export default function ReportsScreen() {
   const insets = useSafeAreaInsets();
-  const { machines, batches } = useMachineStore();
   const [range, setRange] = useState<RangeKey>('week');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
+  const [machines, setMachines] = useState<ApiMachine[]>([]);
+  const [batches, setBatches] = useState<ApiBatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch machines and batches from API
+  const fetchData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      // Fetch machines first (includes batches with process data)
+      const machinesResponse = await fetchWithAuth('/machines', {
+        method: 'GET',
+      });
+
+      if (machinesResponse.ok) {
+        const machinesData = await machinesResponse.json();
+        setMachines(machinesData);
+
+        const batchesFromMachines = machinesData.flatMap((machine: ApiMachine) =>
+          (machine.batches ?? []).map((batch: ApiBatch) => ({
+            ...batch,
+            machineId: batch.machineId || machine.id,
+            machine: batch.machine ?? {
+              id: machine.id,
+              machineId: machine.machineId,
+              name: machine.name,
+            },
+          }))
+        );
+
+        if (batchesFromMachines.length > 0) {
+          const batchesWithProcessData = batchesFromMachines.map((batch: ApiBatch) => ({
+            ...batch,
+            compostOutput: batch.process?.compostOutputWeight,
+            feedOutput: batch.process?.feedOutputWeight,
+          }));
+
+          setBatches(batchesWithProcessData);
+          return;
+        }
+      }
+
+      // Fallback: fetch batches directly if machines response has no batches
+      const response = await fetchWithAuth('/batches', {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch batches');
+      }
+
+      const apiBatches = await response.json();
+
+      // Process data is included via the 'process' relation from the backend
+      const batchesWithProcessData = apiBatches.map((batch: ApiBatch) => ({
+        ...batch,
+        machineId: batch.machine?.id || batch.machineId,
+        compostOutput: batch.process?.compostOutputWeight,
+        feedOutput: batch.process?.feedOutputWeight,
+      }));
+
+      setBatches(batchesWithProcessData);
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+    } finally {
+      if (isRefresh) {
+        setIsRefreshing(false);
+      } else {
+        setIsLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleRefresh = useCallback(() => {
+    fetchData(true);
+  }, [fetchData]);
 
   // Helper function to get date range based on selected range
   const getDateRange = useCallback((rangeType: RangeKey): Date => {
@@ -49,7 +134,7 @@ export default function ReportsScreen() {
   // Calculate line chart data from real batches
   const lineDataByRange: Record<RangeKey, ChartData> = useMemo(() => {
     const now = new Date();
-    const completedBatches = batches.filter(b => b.status === 'completed' && b.endTime);
+    const completedBatches = batches.filter(b => b.status === 'completed' && b.endedAt);
 
     const weekData = () => {
       const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -57,13 +142,15 @@ export default function ReportsScreen() {
       const startDate = getDateRange('week');
       
       completedBatches.forEach(batch => {
-        if (batch.endTime && batch.endTime >= startDate) {
-          const dayIndex = (batch.endTime.getDay() + 6) % 7; // Convert to Mon=0, Sun=6
-          data[dayIndex] += batch.actualWeight ?? 0;
+        const endDate = batch.endedAt ? new Date(batch.endedAt) : null;
+        if (endDate && endDate >= startDate) {
+          const dayIndex = (endDate.getDay() + 6) % 7; // Convert to Mon=0, Sun=6
+          const output = (batch.compostOutput || 0) + (batch.feedOutput || 0);
+          data[dayIndex] += output;
         }
       });
       
-      return { labels, datasets: [{ data: data.map(v => Math.round(v)) }] };
+      return { labels, datasets: [{ data: data.map(v => Math.round(v * 10) / 10) }] };
     };
 
     const monthData = () => {
@@ -72,13 +159,15 @@ export default function ReportsScreen() {
       const startDate = getDateRange('month');
       
       completedBatches.forEach(batch => {
-        if (batch.endTime && batch.endTime >= startDate) {
-          const weekIndex = Math.min(Math.floor((batch.endTime.getDate() - 1) / 7), 3);
-          data[weekIndex] += batch.actualWeight ?? 0;
+        const endDate = batch.endedAt ? new Date(batch.endedAt) : null;
+        if (endDate && endDate >= startDate) {
+          const weekIndex = Math.min(Math.floor((endDate.getDate() - 1) / 7), 3);
+          const output = (batch.compostOutput || 0) + (batch.feedOutput || 0);
+          data[weekIndex] += output;
         }
       });
       
-      return { labels, datasets: [{ data: data.map(v => Math.round(v)) }] };
+      return { labels, datasets: [{ data: data.map(v => Math.round(v * 10) / 10) }] };
     };
 
     const yearData = () => {
@@ -87,13 +176,15 @@ export default function ReportsScreen() {
       const startDate = getDateRange('year');
       
       completedBatches.forEach(batch => {
-        if (batch.endTime && batch.endTime >= startDate) {
-          const monthIndex = batch.endTime.getMonth();
-          data[monthIndex] += batch.actualWeight ?? 0;
+        const endDate = batch.endedAt ? new Date(batch.endedAt) : null;
+        if (endDate && endDate >= startDate) {
+          const monthIndex = endDate.getMonth();
+          const output = (batch.compostOutput || 0) + (batch.feedOutput || 0);
+          data[monthIndex] += output;
         }
       });
       
-      return { labels, datasets: [{ data: data.map(v => Math.round(v)) }] };
+      return { labels, datasets: [{ data: data.map(v => Math.round(v * 10) / 10) }] };
     };
 
     return {
@@ -103,33 +194,23 @@ export default function ReportsScreen() {
     };
   }, [batches, getDateRange]);
 
-  // Calculate bar chart data from real batches by type
+  // Calculate bar chart data from real batches (compost vs feed output)
   const barDataByRange: Record<RangeKey, ChartData> = useMemo(() => {
     const calculateByType = (rangeType: RangeKey) => {
       const startDate = getDateRange(rangeType);
       const completedBatches = batches.filter(
-        b => b.status === 'completed' && b.endTime && b.endTime >= startDate
+        b => b.status === 'completed' && b.endedAt && new Date(b.endedAt) >= startDate
       );
 
-      const feedTotal = completedBatches
-        .filter(b => b.type === 'feed')
-        .reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
-      
-      const compostTotal = completedBatches
-        .filter(b => b.type === 'compost')
-        .reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
-      
-      const mixedTotal = completedBatches
-        .filter(b => b.type === 'mixed')
-        .reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      const feedTotal = completedBatches.reduce((sum, b) => sum + (b.feedOutput ?? 0), 0);
+      const compostTotal = completedBatches.reduce((sum, b) => sum + (b.compostOutput ?? 0), 0);
 
       return {
-        labels: ['Feed', 'Compost', 'Mixed'],
+        labels: ['Feed', 'Compost'],
         datasets: [{ 
           data: [
-            Math.round(feedTotal), 
-            Math.round(compostTotal), 
-            Math.round(mixedTotal)
+            Math.round(feedTotal * 10) / 10, 
+            Math.round(compostTotal * 10) / 10
           ] 
         }],
       };
@@ -148,21 +229,30 @@ export default function ReportsScreen() {
     return machines.map((machine) => {
       const machineBatches = batches.filter((b) => b.machineId === machine.id);
       const completedBatches = machineBatches.filter(b => b.status === 'completed');
-      const totalOutput = completedBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      const totalCompostOutput = completedBatches.reduce((sum, b) => sum + (b.compostOutput ?? 0), 0);
+      const totalFeedOutput = completedBatches.reduce((sum, b) => sum + (b.feedOutput ?? 0), 0);
+      const totalOutput = totalCompostOutput + totalFeedOutput;
       
       const recentHistory = machineBatches
-        .filter((b) => b.endTime)
-        .sort((a, b) => (b.endTime?.getTime() ?? 0) - (a.endTime?.getTime() ?? 0))
+        .filter((b) => b.endedAt)
+        .sort((a, b) => {
+          const dateA = a.endedAt ? new Date(a.endedAt).getTime() : 0;
+          const dateB = b.endedAt ? new Date(b.endedAt).getTime() : 0;
+          return dateB - dateA;
+        })
         .slice(0, 5)
-        .map((b) => ({
-          date: b.endTime?.toLocaleDateString() ?? 'Unknown',
-          value: `${b.actualWeight ?? 0} kg`,
-        }));
+        .map((b) => {
+          const output = (b.compostOutput || 0) + (b.feedOutput || 0);
+          return {
+            date: b.endedAt ? new Date(b.endedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unknown',
+            value: `${Math.round(output * 10) / 10} kg`,
+          };
+        });
 
       return {
         id: machine.id,
-        title: `${machine.name} - ${Math.round(totalOutput)} kg`,
-        subtitle: 'Total Output',
+        title: `${machine.name || machine.machineId} - ${Math.round(totalOutput * 10) / 10} kg`,
+        subtitle: 'Total Output (Compost + Feed)',
         chartData: selectedLineData,
         chartType: 'line' as const,
         history: recentHistory.length > 0 ? recentHistory : [{ date: 'No data', value: '0 kg' }],
@@ -183,18 +273,36 @@ export default function ReportsScreen() {
     return 'Year';
   }, [range]);
 
+  // Calculate overall totals across all machines
+  const overallTotals = useMemo(() => {
+    const completedBatches = batches.filter(b => b.status === 'completed');
+    const totalCompost = completedBatches.reduce((sum, b) => sum + (b.compostOutput ?? 0), 0);
+    const totalFeed = completedBatches.reduce((sum, b) => sum + (b.feedOutput ?? 0), 0);
+    const totalOutput = totalCompost + totalFeed;
+
+    return {
+      compost: Math.round(totalCompost * 10) / 10,
+      feed: Math.round(totalFeed * 10) / 10,
+      total: Math.round(totalOutput * 10) / 10,
+    };
+  }, [batches]);
+
   // Get real history data for selected machine
   const modalHistoryData = useMemo(() => {
     if (!selectedMachine) return [];
     
     return batches
-      .filter(b => b.machineId === selectedMachine && b.status === 'completed' && b.endTime)
-      .sort((a, b) => (b.endTime?.getTime() ?? 0) - (a.endTime?.getTime() ?? 0))
+      .filter(b => b.machineId === selectedMachine && b.status === 'completed' && b.endedAt)
+      .sort((a, b) => {
+        const dateA = a.endedAt ? new Date(a.endedAt).getTime() : 0;
+        const dateB = b.endedAt ? new Date(b.endedAt).getTime() : 0;
+        return dateB - dateA;
+      })
       .map(batch => ({
-        date: batch.endTime?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? 'Unknown',
-        batch: batch.id.substring(0, 8).toUpperCase(),
-        feedKg: batch.type === 'feed' ? Math.round(batch.actualWeight ?? 0) : 0,
-        compostKg: batch.type === 'compost' ? Math.round(batch.actualWeight ?? 0) : 0,
+        date: batch.endedAt ? new Date(batch.endedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unknown',
+        batch: batch.batchNumber || batch.id.substring(0, 8).toUpperCase(),
+        feedKg: Math.round((batch.feedOutput ?? 0) * 10) / 10,
+        compostKg: Math.round((batch.compostOutput ?? 0) * 10) / 10,
       }));
   }, [selectedMachine, batches]);
 
@@ -205,21 +313,36 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + insets.bottom }}>
+      <ScrollView 
+        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + insets.bottom }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         <View style={styles.header}>
           <ScreenTitle style={{ textAlign: 'center' }}>Reports</ScreenTitle>
         </View>
 
-        {hasMachines && <Text style={styles.sectionTitle}>Outputs</Text>}
-
-        {hasMachines ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.cardsColumn}
-            style={styles.cardsScroll}
-          >
-            {mockCards.map((card) => (
-              <View key={card.id} style={[styles.card, { width: cardWidth }]}> 
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.emptyText}>Loading reports...</Text>
+          </View>
+        ) : hasMachines && batches.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>Machine Outputs</Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.cardsColumn}
+              style={styles.cardsScroll}
+            >
+              {mockCards.map((card) => (
+                <View key={card.id} style={[styles.card, { width: cardWidth }]}> 
                 <Text style={styles.cardTitle}>{card.title}</Text>
                 <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
 
@@ -278,14 +401,17 @@ export default function ReportsScreen() {
                 ))}
               </View>
             ))}
-          </ScrollView>
+            </ScrollView>
+          </>
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
               <XCircle size={56} color={colors.mutedText} />
             </View>
             <Text style={styles.emptyTitle}>No Reports</Text>
-            <Text style={styles.emptyText}>Add a machine to start seeing reports</Text>
+            <Text style={styles.emptyText}>
+              {hasMachines ? 'No completed batches yet' : 'Add a machine to start seeing reports'}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -353,6 +479,29 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryText },
   cardSubtitle: { fontSize: 13, color: colors.mutedText, marginTop: 2 },
   cardChart: { marginTop: 12, borderRadius: 12 },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.creamBackground,
+    borderRadius: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
   historyTitle: { fontSize: 14, fontWeight: '700', color: colors.primaryText, marginTop: 16 },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
   viewHistoryContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -389,4 +538,5 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 26, fontWeight: '700', color: colors.primary, marginBottom: 10 },
   emptyText: { fontSize: 16, color: colors.mutedText, textAlign: 'center' },
+  loadingState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100 },
 });

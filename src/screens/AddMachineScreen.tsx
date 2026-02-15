@@ -75,7 +75,7 @@ export default function AddMachineScreen({ navigation }: any) {
         id: registeredMachine.id || Date.now().toString(),
         name: registeredMachine.name || machineName.trim(),
         machineId: registeredMachine.machineId || machineId.trim().toUpperCase(),
-        isOnline: false, // Default to offline until MQTT connection
+        isOnline: true, // Default to online when added
       };
 
       addMachine(newMachine);

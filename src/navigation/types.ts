@@ -21,7 +21,6 @@ export type RootStackParamList = {
   AboutNutriCycle: undefined;
   ContactUs: undefined;
   AddMachine: undefined;
-  NewBatch: undefined;
     TermsAndConditions: undefined;
     PrivacyNotice: undefined;
     BatchSession: undefined;

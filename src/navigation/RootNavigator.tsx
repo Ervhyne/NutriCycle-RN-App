@@ -15,7 +15,6 @@ import { TermsAndConditionsScreen } from '../screens/TermsAndConditionsScreen';
 import { PrivacyNoticeScreen } from '../screens/PrivacyNoticeScreen';
 import { ContactUsScreen } from '../screens/ContactUsScreen';
 import AddMachineScreen from '../screens/AddMachineScreen';
-import NewBatchScreen from '../screens/NewBatchScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import BatchSessionScreen from '../screens/BatchSessionScreen';
 import ReportsScreen from '../screens/ReportsScreen';
@@ -190,14 +189,6 @@ export default function RootNavigator() {
         <Stack.Screen 
           name="AddMachine" 
           component={AddMachineScreen}
-          options={{
-            presentation: 'modal',
-            animation: 'fade',
-          }}
-        />
-        <Stack.Screen 
-          name="NewBatch" 
-          component={NewBatchScreen}
           options={{
             presentation: 'modal',
             animation: 'fade',
