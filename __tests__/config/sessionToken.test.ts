@@ -22,6 +22,8 @@ describe('Session Token Management', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockClear();
+    // Set API base URL for tests
+    process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.com';
   });
 
   describe('Token Retrieval', () => {
@@ -395,16 +397,13 @@ describe('Session Token Management', () => {
       }
     });
 
-    it('should use configured URL from Firestore', async () => {
+    it('should use configured URL from environment variable', async () => {
       const mockGetIdToken = jest.fn().mockResolvedValue('token-abc');
       (auth as any).currentUser = {
         getIdToken: mockGetIdToken,
       };
 
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => true,
-        data: () => ({ url: 'https://prod-api.example.com' }),
-      });
+      process.env.EXPO_PUBLIC_API_BASE_URL = 'https://prod-api.example.com';
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,

@@ -32,10 +32,11 @@ describe('TelemetryCard Component', () => {
   });
 
   it('should display default values when telemetry is null', () => {
-    const { getByText } = render(<TelemetryCard telemetry={null} />);
+    const { getAllByText } = render(<TelemetryCard telemetry={null} />);
     
-    expect(getByText('idle')).toBeTruthy(); // default motorState
-    expect(getByText('--')).toBeTruthy(); // default values
+    expect(getAllByText('idle')).toBeTruthy(); // default motorState
+    const dashTexts = getAllByText('--');
+    expect(dashTexts.length).toBeGreaterThan(0); // default values (multiple dashes)
   });
 
   it('should update when telemetry data changes', () => {

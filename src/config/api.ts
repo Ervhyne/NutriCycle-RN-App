@@ -2,14 +2,15 @@ import { auth } from './firebase';
 
 export async function getApiBaseUrl(): Promise<string> {
   const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL || '';
-  if (!envUrl) {
-    throw new Error('API base URL not configured in environment variables');
-  }
   return envUrl.toString().trim().replace(/\/$/, '');
 }
 
 export async function fetchWithAuth(path: string, init?: RequestInit): Promise<Response> {
   const baseUrl = await getApiBaseUrl();
+  
+  if (!baseUrl) {
+    throw new Error('API base URL not configured in environment variables');
+  }
 
   const token = await auth.currentUser?.getIdToken(true);
   const headers: Record<string, string> = {
