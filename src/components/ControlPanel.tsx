@@ -1,81 +1,71 @@
 import React, { useState, useEffect } from 'react';
+import { fetchWithAuth, getApiBaseUrl } from '../config/api';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Play, StopCircle } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
 
-export default function ControlPanel() {
-  const { startProcessing, stopProcessing, currentBatch } = useMachineStore();
+export default function ControlPanel({ batchStatus, setBatchStatus }: {
+  batchStatus: 'idle' | 'running' | 'completed' | 'error' | null,
+  setBatchStatus: (status: 'idle' | 'running' | 'completed' | 'error' | null) => void
+}) {
+  const { selectedMachine, machines, selectMachine } = useMachineStore();
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const [isStopped, setIsStopped] = useState(false);
-  const [loadingButton, setLoadingButton] = useState<'start' | 'stop' | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [loadingButton, setLoadingButton] = useState<'stop' | null>(null);
 
-  // Reset isStopped when a batch starts running, set stopped when idle
-  useEffect(() => {
-    if (currentBatch?.status === 'running') {
-      setIsStopped(false);
-    } else if (currentBatch?.status === 'idle') {
-      setIsStopped(true);
+  // Fetch batch status from backend
+  const [debugStatus, setDebugStatus] = useState<any>(null);
+  const fetchBatchStatus = async () => {
+    if (!selectedMachine?.machineId) return;
+    try {
+      const apiBase = await getApiBaseUrl();
+      const res = await fetchWithAuth(`${apiBase}/machines/${selectedMachine.machineId}/status`);
+      const data = await res.json();
+      setBatchStatus(data?.batchStatus || null);
+    } catch (err) {
+      setBatchStatus(null);
     }
-  }, [currentBatch?.status]);
+  };
+
+  useEffect(() => {
+    fetchBatchStatus();
+    const interval = setInterval(fetchBatchStatus, 5000);
+    return () => clearInterval(interval);
+  }, [selectedMachine?.machineId]);
+
+  // Auto-select first machine if none is selected
+  useEffect(() => {
+    if (!selectedMachine && machines && machines.length > 0) {
+      selectMachine(machines[0]);
+    }
+  }, [selectedMachine, machines, selectMachine]);
 
   const handleStopPress = () => {
-    if (!isStopped) {
+    if (batchStatus === 'running') {
       setConfirmVisible(true);
     }
   };
 
-  const handleStartPress = async () => {
-    if (!currentBatch) {
-      alert('No batch selected');
-      return;
-    }
-
-    setLoadingButton('start');
-    
-    // 5-second initialization countdown
-    setCountdown(5);
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(countdownInterval);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Wait 5 seconds before starting
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    try {
-      setIsStopped(false);
-      startProcessing();
-    } catch (err) {
-      console.error('Start batch error:', err);
-      alert('Failed to start batch');
-    } finally {
-      setLoadingButton(null);
-      setCountdown(null);
-    }
-  };
 
   const confirmStop = async () => {
-    if (!currentBatch) {
-      alert('No batch selected');
+    if (!selectedMachine?.machineId) {
+      alert('No machine selected');
       setConfirmVisible(false);
       return;
     }
-
     setConfirmVisible(false);
     setLoadingButton('stop');
-    
     try {
-      setIsStopped(true);
-      stopProcessing();
+      const apiBase = await getApiBaseUrl();
+      // PATCH to set batch status to idle
+      await fetchWithAuth(`${apiBase}/machines/${selectedMachine.machineId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: 'idle' })
+      });
+      // Re-fetch after stop
+      await fetchBatchStatus();
     } catch (err) {
-      console.error('Stop batch error:', err);
       alert('Failed to stop batch');
     } finally {
       setLoadingButton(null);
@@ -108,26 +98,11 @@ export default function ControlPanel() {
     }
   };
 
-  const isRunning = currentBatch?.status === 'running';
-  const startDisabled = isRunning || loadingButton !== null;
-  const stopDisabled = !isRunning || loadingButton !== null;
+  const stopDisabled = batchStatus !== 'running' || loadingButton !== null;
 
   return (
     <View style={styles.container}>
       <View style={styles.column}>
-        <TouchableOpacity 
-          style={[styles.button, startDisabled && styles.disabled]} 
-          onPress={handleStartPress} 
-          activeOpacity={startDisabled ? 1 : 0.8}
-          disabled={startDisabled}
-        >
-          {loadingButton === 'start' ? (
-            <ActivityIndicator size="small" color={colors.cardWhite} />
-          ) : null}
-          <Text style={styles.buttonText}>
-            {countdown !== null ? `Initializing ${countdown}s` : loadingButton === 'start' ? 'Starting...' : 'Start'}
-          </Text>
-        </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.button, styles.stop, stopDisabled && styles.disabled]} 
           onPress={handleStopPress} 
@@ -140,6 +115,7 @@ export default function ControlPanel() {
           <Text style={styles.buttonText}>{loadingButton === 'stop' ? 'Stopping...' : 'Stop'}</Text>
         </TouchableOpacity>
       </View>
+
 
       <Modal
         animationType="fade"

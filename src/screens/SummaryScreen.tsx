@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
@@ -8,17 +9,12 @@ import { CheckCircle, Package, Leaf, Droplet } from 'lucide-react-native';
 
 export default function SummaryScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { currentBatch, currentBatchProcess, fetchBatchProcess } = useMachineStore();
+  const { currentBatch } = useMachineStore();
 
-  useEffect(() => {
-    if (currentBatch) {
-      fetchBatchProcess();
-    }
-  }, [currentBatch]);
 
   if (!currentBatch) {
     return (
-      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}> 
         <View style={styles.content}>
           <ScreenTitle>No Batch</ScreenTitle>
           <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Dashboard')}>
@@ -29,8 +25,8 @@ export default function SummaryScreen({ navigation }: any) {
     );
   }
 
-  const hasCompostOutput = currentBatchProcess?.compostOutputWeight && currentBatchProcess.compostOutputWeight > 0;
-  const hasFeedOutput = currentBatchProcess?.feedOutputWeight && currentBatchProcess.feedOutputWeight > 0;
+  const hasCompostOutput = currentBatch?.compostOutput && currentBatch.compostOutput > 0;
+  const hasFeedOutput = currentBatch?.feedOutput && currentBatch.feedOutput > 0;
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -77,11 +73,9 @@ export default function SummaryScreen({ navigation }: any) {
                     <Text style={styles.outputLabel}>Feed Output</Text>
                   </View>
                   <Text style={styles.outputValue}>
-                    {currentBatchProcess?.feedOutputWeight ?? 0} <Text style={styles.outputUnit}>kg</Text>
+                    {currentBatch?.feedOutput ?? 0} <Text style={styles.outputUnit}>kg</Text>
                   </Text>
-                  {currentBatchProcess?.feedStatus && (
-                    <Text style={styles.outputStatus}>{currentBatchProcess.feedStatus}</Text>
-                  )}
+                  {/* Optionally display a status or note here if you add a field to Batch */}
                 </View>
               </>
             )}
@@ -95,11 +89,9 @@ export default function SummaryScreen({ navigation }: any) {
                     <Text style={styles.outputLabel}>Compost Output</Text>
                   </View>
                   <Text style={styles.outputValue}>
-                    {currentBatchProcess?.compostOutputWeight ?? 0} <Text style={styles.outputUnit}>kg</Text>
+                    {currentBatch?.compostOutput ?? 0} <Text style={styles.outputUnit}>kg</Text>
                   </Text>
-                  {currentBatchProcess?.compostStatus && (
-                    <Text style={styles.outputStatus}>{currentBatchProcess.compostStatus}</Text>
-                  )}
+                  {/* Optionally display a status or note here if you add a field to Batch */}
                 </View>
               </>
             )}

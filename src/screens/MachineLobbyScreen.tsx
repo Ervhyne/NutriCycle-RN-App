@@ -79,8 +79,11 @@ export default function MachineLobbyScreen({ navigation }: any) {
       const data = await response.json();
       let machinesData = data.machines || data || [];
 
-      // Set all machines to offline by default
-      machinesData = machinesData.map((m: Machine) => ({ ...m, isOnline: false }));
+      // Map server status to isOnline boolean
+      machinesData = machinesData.map((m: any) => ({
+        ...m,
+        isOnline: m.status === 'online' || m.status === 'running',
+      }));
 
       // Replace machines with the latest list from API to avoid stale entries between accounts
       clearMachine();

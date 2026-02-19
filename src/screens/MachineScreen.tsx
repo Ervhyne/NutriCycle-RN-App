@@ -2,11 +2,14 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors } from '../theme/colors';
+
 import TelemetryCard from '../components/TelemetryCard';
 import { useMachineStore } from '../stores/machineStore';
+import ControlPanel from '../components/ControlPanel';
 
-export default function MachineScreen({ navigation }: any) {
+export default function MachineScreen() {
   const { selectedMachine, telemetry } = useMachineStore();
+  const [batchStatus, setBatchStatus] = useState<'idle' | 'running' | 'completed' | 'error' | null>(null);
   const [streamUrl, setStreamUrl] = useState('https://nonalignable-loria-permissive.ngrok-free.dev/');
   const [inputUrl, setInputUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -175,7 +178,9 @@ export default function MachineScreen({ navigation }: any) {
         </View>
 
         {/* Telemetry */}
-        <TelemetryCard telemetry={telemetry} />
+        <TelemetryCard telemetry={telemetry} batchStatus={batchStatus} />
+        {/* Controls */}
+        <ControlPanel batchStatus={batchStatus} setBatchStatus={setBatchStatus} />
       </ScrollView>
     </View>
   );

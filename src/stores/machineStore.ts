@@ -78,9 +78,6 @@ interface MachineStore {
   setCurrentBatch: (batch: Batch | null) => void;
   
   // Current Batch Process
-  currentBatchProcess: BatchProcess | null;
-  setCurrentBatchProcess: (batchProcess: BatchProcess | null) => void;
-  fetchBatchProcess: () => Promise<void>;
   
   // Telemetry
   telemetry: MachineTelemetry | null;
@@ -96,8 +93,6 @@ interface MachineStore {
   completeBatchAPI: () => Promise<void>;
 
   // API actions for batch process
-  updateBatchProcessStage: (feedStatus?: string | null, compostStatus?: string | null) => Promise<any>;
-  getBatchProcess: () => Promise<any>;
   
   // RPI control actions (send commands to Raspberry Pi)
   startRPIProcessing: () => Promise<void>;
@@ -118,15 +113,19 @@ export const useMachineStore = create<MachineStore>((set) => ({
     machines: [],
     batches: [],
     currentBatch: null,
-    currentBatchProcess: null,
     telemetry: null,
   }),
   
   // Machines List
   machines: [],
-  addMachine: (machine) => set((state) => ({ 
-    machines: [...state.machines, machine] 
-  })),
+  addMachine: (machine) => set((state) => {
+    // Prevent duplicate machineId
+    const exists = state.machines.some(
+      (m) => m.machineId.toUpperCase() === machine.machineId.toUpperCase()
+    );
+    if (exists) return state;
+    return { machines: [...state.machines, machine] };
+  }),
   removeMachine: async (machineId) => {
     try {
       // Find the machine to get its machineId (the hardware ID)
@@ -234,39 +233,21 @@ export const useMachineStore = create<MachineStore>((set) => ({
   
   // Current Batch
   currentBatch: null,
-  setCurrentBatch: (batch) => {
-    if (batch?.status === 'running') {
-      startTelemetrySimulation(set);
-    } else {
-      stopTelemetrySimulation();
-    }
-    set({ currentBatch: batch });
-  },
-  
-  // Current Batch Process
-  currentBatchProcess: null,
-  setCurrentBatchProcess: (batchProcess) => set({ currentBatchProcess: batchProcess }),
-  fetchBatchProcess: async () => {
+  setCurrentBatch: (batch) => set({ currentBatch: batch }),
+  fetchCurrentBatch: async () => {
     const { currentBatch } = useMachineStore.getState();
     if (!currentBatch) {
-      console.log('[fetchBatchProcess] No current batch');
+      console.log('[fetchCurrentBatch] No current batch');
       return;
     }
-    
     try {
-      console.log(`[fetchBatchProcess] Fetching process for batch: ${currentBatch.id}`);
-      const response = await fetchWithAuth(`/batches/${currentBatch.id}/process`, {
-        method: 'GET',
-      });
-      
+      console.log(`[fetchCurrentBatch] Fetching batch: ${currentBatch.id}`);
+      const response = await fetchWithAuth(`/batches/${currentBatch.id}`);
       const data = await response.json();
-      console.log('[fetchBatchProcess] Response:', data);
-      
-      if (data?.process) {
-        set({ currentBatchProcess: data.process });
-      }
+      console.log('[fetchCurrentBatch] Response:', data);
+      set({ currentBatch: data });
     } catch (error) {
-      console.error('[fetchBatchProcess] Error:', error);
+      console.error('[fetchCurrentBatch] Error:', error);
     }
   },
   
@@ -467,24 +448,20 @@ export const useMachineStore = create<MachineStore>((set) => ({
     }
   },
   
-  getBatchProcess: async () => {
+  getCurrentBatch: async () => {
     const { currentBatch } = useMachineStore.getState();
     if (!currentBatch) {
-      console.error('[Process API] No current batch to get process');
+      console.error('[Batch API] No current batch to get');
       return null;
     }
-    
     try {
-      console.log(`[Process API] Fetching process for batch ID: ${currentBatch.id}`);
-      const response = await fetchWithAuth(`/batches/${currentBatch.id}/process`, {
-        method: 'GET',
-      });
-      
-      const process = await response.json();
-      console.log('[Process API] Process fetched:', process);
-      return process;
+      console.log(`[Batch API] Fetching batch ID: ${currentBatch.id}`);
+      const response = await fetchWithAuth(`/batches/${currentBatch.id}`);
+      const batch = await response.json();
+      console.log('[Batch API] Batch fetched:', batch);
+      return batch;
     } catch (error) {
-      console.error('[Process API] Failed to fetch process:', error);
+      console.error('[Batch API] Failed to fetch batch:', error);
       return null;
     }
   },

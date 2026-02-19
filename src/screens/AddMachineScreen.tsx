@@ -10,8 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
 } from 'react-native';
-import { QrCode, Hash } from 'lucide-react-native';
+import { QrCode, Hash, X, PlusCircle } from 'lucide-react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useMachineStore } from '../stores/machineStore';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
@@ -27,17 +29,36 @@ export default function AddMachineScreen({ navigation }: any) {
   const [addedMachineName, setAddedMachineName] = useState('');
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorTitle, setErrorTitle] = useState('Error');
   const [loading, setLoading] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [showNameModal, setShowNameModal] = useState(false);
 
   const handleAddMachine = async () => {
     if (!machineId.trim()) {
+      setErrorTitle('Missing Field');
       setErrorMessage('Please enter a Machine ID');
       setErrorModalVisible(true);
       return;
     }
 
     if (!machineName.trim()) {
+      setErrorTitle('Missing Field');
       setErrorMessage('Please enter a Machine Name');
+      setErrorModalVisible(true);
+      return;
+    }
+
+    // Check if machine with same machineId already exists in store
+    const { machines } = useMachineStore.getState();
+    const duplicate = machines.find(
+      (m) => m.machineId.toUpperCase() === machineId.trim().toUpperCase()
+    );
+    if (duplicate) {
+      setErrorTitle('Already Added');
+      setErrorMessage(`Machine "${duplicate.name || duplicate.machineId}" is already added to your account.`);
       setErrorModalVisible(true);
       return;
     }
@@ -48,6 +69,7 @@ export default function AddMachineScreen({ navigation }: any) {
       // Register machine with API server
       const apiUrl = await getApiBaseUrl();
       if (!apiUrl) {
+        setErrorTitle('Configuration');
         setErrorMessage('No API URL configured. Please set it in Settings.');
         setErrorModalVisible(true);
         setLoading(false);
@@ -75,7 +97,7 @@ export default function AddMachineScreen({ navigation }: any) {
         id: registeredMachine.id || Date.now().toString(),
         name: registeredMachine.name || machineName.trim(),
         machineId: registeredMachine.machineId || machineId.trim().toUpperCase(),
-        isOnline: true, // Default to online when added
+        isOnline: registeredMachine.status === 'online' || registeredMachine.status === 'running',
       };
 
       addMachine(newMachine);
@@ -83,6 +105,7 @@ export default function AddMachineScreen({ navigation }: any) {
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Error registering machine:', error);
+      setErrorTitle('Oops!');
       setErrorMessage(error.message || 'Failed to register machine. Please try again.');
       setErrorModalVisible(true);
     } finally {
@@ -90,9 +113,46 @@ export default function AddMachineScreen({ navigation }: any) {
     }
   };
 
-  const handleScanQR = () => {
-    // Placeholder for QR scanner
-    Alert.alert('QR Scanner', 'QR scanner will be implemented here');
+  const handleScanQR = async () => {
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please allow camera access in your device settings to scan QR codes.'
+        );
+        return;
+      }
+    }
+    setScanned(false);
+    setScannerOpen(true);
+  };
+
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    setScanned(true);
+
+    let scannedMachineId = '';
+    let scannedName = '';
+
+    // Try parsing as JSON (QR may contain { machineId, name })
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.machineId) {
+        scannedMachineId = parsed.machineId.trim().toUpperCase();
+        scannedName = parsed.name || '';
+      }
+    } catch {
+      // Not JSON — treat as plain machine ID
+      scannedMachineId = data.trim().toUpperCase();
+    }
+
+    setMachineId(scannedMachineId);
+    setMachineName(scannedName);
+    setScannerOpen(false);
+
+    // Show the name modal after QR scan
+    setTimeout(() => setShowNameModal(true), 300);
   };
 
   return (
@@ -171,11 +231,14 @@ export default function AddMachineScreen({ navigation }: any) {
         {errorModalVisible && (
           <View style={styles.modalOverlay} pointerEvents="box-none">
             <View style={styles.modalCard}>
-              <Text style={styles.modalErrorTitle}>Error</Text>
+              <Text style={styles.modalErrorTitle}>{errorTitle}</Text>
               <Text style={styles.modalErrorSubtitle}>{errorMessage}</Text>
               <TouchableOpacity
                 style={styles.modalButton}
-                onPress={() => setErrorModalVisible(false)}
+                onPress={() => {
+                  setErrorModalVisible(false);
+                  setErrorTitle('Error');
+                }}
               >
                 <Text style={styles.modalButtonText}>Close</Text>
               </TouchableOpacity>
@@ -201,6 +264,74 @@ export default function AddMachineScreen({ navigation }: any) {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* QR Scanner Modal */}
+      <Modal visible={scannerOpen} animationType="slide">
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={styles.camera}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          />
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerFrame} />
+            <Text style={styles.scannerHint}>Point camera at QR code on your NutriCycle device</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.closeButton, { top: 16 + insets.top }]}
+            onPress={() => setScannerOpen(false)}
+          >
+            <X size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Machine Name Modal (after QR scan) */}
+      <Modal visible={showNameModal} animationType="fade" transparent>
+        <KeyboardAvoidingView
+          style={styles.nameModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.nameModalCard}>
+            <Image source={require('../../assets/Add Machine Asset.png')} style={styles.nameModalImage} resizeMode="contain" />
+            <Text style={styles.nameModalTitle}>Name Your Machine</Text>
+            <Text style={styles.nameModalId}>Machine ID: {machineId}</Text>
+
+            <Text style={styles.nameModalLabel}>Machine Name</Text>
+            <TextInput
+              style={styles.nameModalInput}
+              value={machineName}
+              onChangeText={setMachineName}
+              autoFocus
+            />
+
+            <TouchableOpacity
+              style={[styles.nameModalAddBtn, loading && styles.nameModalAddBtnDisabled]}
+              onPress={() => {
+                setShowNameModal(false);
+                handleAddMachine();
+              }}
+              activeOpacity={0.85}
+              disabled={loading}
+            >
+              <Text style={styles.nameModalAddBtnText}>{loading ? 'Adding...' : 'Add Machine'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowNameModal(false);
+                setMachineId('');
+                setMachineName('');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -331,13 +462,58 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cancelButton: {
-    padding: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelText: {
     color: colors.mutedText,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+
+  /* Scanner */
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  camera: {
+    flex: 1,
+  },
+  scannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scannerFrame: {
+    width: 250,
+    height: 250,
+    borderWidth: 3,
+    borderColor: colors.primary,
+    borderRadius: 20,
+  },
+  scannerHint: {
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 20,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   /* Success modal */
@@ -388,7 +564,7 @@ const styles = StyleSheet.create({
   modalErrorTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#D32F2F',
+    color: colors.primaryText,
     marginBottom: 8,
   },
   modalSubtitle: {
@@ -416,5 +592,91 @@ const styles = StyleSheet.create({
     color: colors.cardWhite,
     fontWeight: '700',
     fontSize: 16,
+  },
+
+  /* Name Modal (after QR scan) */
+  nameModalOverlay: {
+    flex: 1,
+    backgroundColor: '#00000055',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  nameModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.creamBackground,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  nameModalImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 12,
+  },
+  nameModalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.primaryText,
+    marginBottom: 4,
+  },
+  nameModalId: {
+    fontSize: 14,
+    color: colors.mutedText,
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  nameModalLabel: {
+    alignSelf: 'flex-start',
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryText,
+    marginBottom: 8,
+  },
+  nameModalInput: {
+    width: '100%',
+    backgroundColor: colors.cardSurface,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 16,
+    padding: 18,
+    fontSize: 16,
+    color: colors.primaryText,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  nameModalAddBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    backgroundColor: colors.primary,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginBottom: 12,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  nameModalAddBtnDisabled: {
+    opacity: 0.7,
+  },
+  nameModalAddBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });

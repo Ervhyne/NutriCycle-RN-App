@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { colors } from '../theme/colors';
 import { MachineTelemetry } from '../types';
 
-export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemetry | null }) {
-  const motorState = telemetry?.motorState ?? 'idle';
+// Accept batchStatus as a prop
+export default function TelemetryCard({ telemetry, batchStatus }: { telemetry: MachineTelemetry | null, batchStatus: 'idle' | 'running' | 'completed' | 'error' | null }) {
+  // Use batchStatus for motor state badge
+  const motorState = batchStatus ?? 'idle';
   const temp = telemetry?.dryerTemperature && telemetry.dryerTemperature > 0 ? telemetry.dryerTemperature : '--';
   const humidity = telemetry?.humidity && telemetry.humidity > 0 ? telemetry.humidity : '--';
   const diverter = telemetry?.diverterPosition ?? '--';
@@ -44,7 +46,11 @@ export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemet
     ],
   };
 
-  const motorColor = motorState === 'running' ? colors.success : colors.warning;
+  let motorColor: string = colors.mutedText;
+  if (motorState === 'running') motorColor = colors.success;
+  else if (motorState === 'idle') motorColor = colors.warning;
+  else if (motorState === 'completed') motorColor = colors.primary;
+  else if (motorState === 'error') motorColor = colors.danger;
 
   return (
     <View style={styles.container}>
@@ -54,7 +60,7 @@ export default function TelemetryCard({ telemetry }: { telemetry: MachineTelemet
           <Text style={styles.motorLabel}>Motor Status</Text>
           <View style={[styles.motorBadge, { borderColor: motorColor }]}>
             <View style={[styles.motorDot, { backgroundColor: motorColor }]} />
-            <Text style={[styles.motorText, { color: motorColor }]}>{motorState}</Text>
+            <Text style={[styles.motorText, { color: motorColor }]}>{motorState.charAt(0).toUpperCase() + motorState.slice(1)}</Text>
           </View>
         </View>
         <View style={styles.diverterInfo}>
