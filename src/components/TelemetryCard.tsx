@@ -1,46 +1,72 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { act } from 'react';
+import { getApiBaseUrl, fetchWithAuth } from '../config/api';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { colors } from '../theme/colors';
 import { MachineTelemetry } from '../types';
 
 // Accept batchStatus as a prop
-export default function TelemetryCard({ telemetry, batchStatus }: { telemetry: MachineTelemetry | null, batchStatus: 'idle' | 'running' | 'completed' | 'error' | null }) {
-  // Use batchStatus for motor state badge
-  const motorState = batchStatus ?? 'idle';
-  const temp = telemetry?.dryerTemperature && telemetry.dryerTemperature > 0 ? telemetry.dryerTemperature : '--';
-  const humidity = telemetry?.humidity && telemetry.humidity > 0 ? telemetry.humidity : '--';
-  const diverter = telemetry?.diverterPosition ?? '--';
-
+export default function TelemetryCard({
+  telemetry,
+  batchStatus,
+  isOnline,
+  navigation,
+}: {
+  telemetry: MachineTelemetry | null;
+  batchStatus: 'idle' | 'running' | 'completed' | 'error' | null;
+  isOnline?: boolean;
+  navigation?: any;
+}) {
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const motorState: 'idle' | 'running' | 'completed' | 'error' =
+    telemetry?.motorState === 'paused'
+      ? 'idle'
+      : telemetry?.motorState ?? 'idle';
+  const [humidity, setHumidity] = React.useState('--');
+  const [temp, setTemp] = React.useState('--');
+  const [feedStatus, setFeedStatus] = React.useState('--');
+  const [loading, setLoading] = React.useState(true);
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 1200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 1200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [floatAnim]);
+    if (isOnline === false) {
+      setHumidity('--');
+      setTemp('--');
+      setFeedStatus('--');
+      setLoading(false);
+      return;
+    }
+    // Fetch latest batch for humidity, temperature, and feedStatus
+    const fetchBatch = async () => {
+      setLoading(true);
+      try {
+        const res = await fetchWithAuth('/batches?limit=1&order=desc');
+        const batches = await res.json();
+        if (batches && batches.length > 0) {
+          setHumidity(batches[0].humidity?.toString() ?? '--');
+          setTemp(batches[0].temperature?.toString() ?? '--');
+          setFeedStatus(batches[0].feedStatus ?? '--');
+        } else {
+          setHumidity('--');
+          setTemp('--');
+          setFeedStatus('--');
+        }
+      } catch (err) {
+        setHumidity('--');
+        setTemp('--');
+        setFeedStatus('--');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBatch();
+  }, [isOnline]);
 
   const floatStyle = {
     transform: [
       {
         translateY: floatAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: [-2, 2],
+          outputRange: [0, -8],
         }),
       },
     ],
@@ -52,6 +78,22 @@ export default function TelemetryCard({ telemetry, batchStatus }: { telemetry: M
   else if (motorState === 'completed') motorColor = colors.primary;
   else if (motorState === 'error') motorColor = colors.danger;
 
+  // Use feedStatus from DB for process stage
+  let processText = '--';
+  if (feedStatus && feedStatus !== '--') {
+    processText = feedStatus;
+  }
+
+  // Auto-navigate to SummaryScreen after 5 seconds if processing is completed
+  useEffect(() => {
+    if (processText.toLowerCase() === 'completed' && navigation) {
+      const timeout = setTimeout(() => {
+        navigation.navigate('Summary');
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [processText, navigation]);
+
   return (
     <View style={styles.container}>
       {/* Motor Status Section */}
@@ -60,13 +102,15 @@ export default function TelemetryCard({ telemetry, batchStatus }: { telemetry: M
           <Text style={styles.motorLabel}>Motor Status</Text>
           <View style={[styles.motorBadge, { borderColor: motorColor }]}>
             <View style={[styles.motorDot, { backgroundColor: motorColor }]} />
-            <Text style={[styles.motorText, { color: motorColor }]}>{motorState.charAt(0).toUpperCase() + motorState.slice(1)}</Text>
+            <Text style={[styles.motorText, { color: motorColor }]}>{motorState}</Text>
           </View>
         </View>
-        <View style={styles.diverterInfo}>
-          <Text style={styles.diverterLabel}>Diverter Position:</Text>
-          <Text style={styles.diverterValue}>{diverter}</Text>
-        </View>
+      </View>
+
+      {/* Processing Info Section (styled like diverter) */}
+      <View style={styles.diverterInfo}>
+        <Text style={styles.diverterLabel}>Processing</Text>
+        <Text style={styles.diverterValue}>{processText}</Text>
       </View>
 
       {/* Metrics Grid */}
@@ -74,14 +118,18 @@ export default function TelemetryCard({ telemetry, batchStatus }: { telemetry: M
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>Temperature</Text>
           <View style={styles.metricContent}>
-            <Animated.Text style={[styles.metricValue, floatStyle]}>{temp}</Animated.Text>
+            <Animated.Text style={[styles.metricValue, floatStyle]}>
+              {loading ? '--' : temp}
+            </Animated.Text>
             <Text style={styles.metricUnit}>°C</Text>
           </View>
         </View>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>Humidity</Text>
           <View style={styles.metricContent}>
-            <Animated.Text style={[styles.metricValue, floatStyle]}>{humidity}</Animated.Text>
+            <Animated.Text style={[styles.metricValue, floatStyle]}>
+              {loading ? '--' : humidity}
+            </Animated.Text>
             <Text style={styles.metricUnit}>%</Text>
           </View>
         </View>
@@ -99,7 +147,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E8E8E8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -122,7 +169,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.mutedText,
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   motorBadge: {
@@ -131,9 +177,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
+    backgroundColor: '#FAFAFA',
     borderWidth: 1.5,
     gap: 6,
-    backgroundColor: '#FAFAFA',
   },
   motorDot: {
     width: 8,
@@ -152,12 +198,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    marginBottom: 18,
+    marginTop: -8,
+    alignItems: 'flex-start',
   },
   diverterLabel: {
     fontSize: 11,
     color: colors.mutedText,
     fontWeight: '500',
     marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   diverterValue: {
     fontSize: 15,

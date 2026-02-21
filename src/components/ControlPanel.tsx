@@ -19,9 +19,14 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
     if (!selectedMachine?.machineId) return;
     try {
       const apiBase = await getApiBaseUrl();
-      const res = await fetchWithAuth(`${apiBase}/machines/${selectedMachine.machineId}/status`);
-      const data = await res.json();
-      setBatchStatus(data?.batchStatus || null);
+      // Fetch latest batch for this machine
+      const res = await fetchWithAuth(`${apiBase}/batches?machineId=${selectedMachine.machineId}&limit=1&order=desc`);
+      const batches = await res.json();
+      if (batches && batches.length > 0) {
+        setBatchStatus(batches[0].status || null);
+      } else {
+        setBatchStatus(null);
+      }
     } catch (err) {
       setBatchStatus(null);
     }
@@ -57,12 +62,17 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
     setLoadingButton('stop');
     try {
       const apiBase = await getApiBaseUrl();
-      // PATCH to set batch status to idle
-      await fetchWithAuth(`${apiBase}/machines/${selectedMachine.machineId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: 'idle' })
-      });
+      // Fetch latest batch for this machine
+      const res = await fetchWithAuth(`${apiBase}/batches?machineId=${selectedMachine.machineId}&limit=1&order=desc`);
+      const batches = await res.json();
+      if (batches && batches.length > 0) {
+        const batch = batches[0];
+        await fetchWithAuth(`${apiBase}/batches/${batch.batchNumber}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'idle' })
+        });
+      }
       // Re-fetch after stop
       await fetchBatchStatus();
     } catch (err) {

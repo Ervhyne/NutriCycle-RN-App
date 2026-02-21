@@ -16,8 +16,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication with AsyncStorage persistence for React Native
-export const auth = initializeAuth(app, {} as any);
+// Firebase Auth persistence is memory-only in Firebase v12+ for React Native.
+// AsyncStorage persistence is not supported in this version.
+export const auth = initializeAuth(app, {});
 
 // Initialize Firestore
 export const db = getFirestore(app);

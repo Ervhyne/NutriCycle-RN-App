@@ -55,7 +55,7 @@ export default function BatchSessionNavigator() {
       }}
     >
       <Tab.Screen name="Machine" component={MachineScreen} />
-      <Tab.Screen name="Process" component={ProcessScreen} />
+      {/* Removed Process tab */}
     </Tab.Navigator>
   );
 }

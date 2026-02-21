@@ -8,6 +8,7 @@ export async function getApiBaseUrl(): Promise<string> {
 
 export async function fetchWithAuth(path: string, init?: RequestInit): Promise<Response> {
   const baseUrl = await getApiBaseUrl();
+  console.log('API base URL:', baseUrl); // DEBUG: print API base URL
   if (!baseUrl) {
     throw new Error('API base URL not configured in environment variables');
   }
@@ -34,7 +35,7 @@ export async function fetchWithAuth(path: string, init?: RequestInit): Promise<R
     ...(init?.headers as Record<string, string> | undefined),
   };
 
-  const url = `${baseUrl}${cleanPath}`;
+  const url = `${baseUrl}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
   const res = await fetch(url, { ...init, headers });
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');

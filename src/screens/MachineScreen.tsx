@@ -7,7 +7,7 @@ import TelemetryCard from '../components/TelemetryCard';
 import { useMachineStore } from '../stores/machineStore';
 import ControlPanel from '../components/ControlPanel';
 
-export default function MachineScreen() {
+export default function MachineScreen({ navigation }: any) {
   const { selectedMachine, telemetry } = useMachineStore();
   const [batchStatus, setBatchStatus] = useState<'idle' | 'running' | 'completed' | 'error' | null>(null);
   const [streamUrl, setStreamUrl] = useState('https://nonalignable-loria-permissive.ngrok-free.dev/');
@@ -178,7 +178,7 @@ export default function MachineScreen() {
         </View>
 
         {/* Telemetry */}
-        <TelemetryCard telemetry={telemetry} batchStatus={batchStatus} />
+        <TelemetryCard telemetry={telemetry} batchStatus={batchStatus} isOnline={selectedMachine?.isOnline === true} navigation={navigation} />
         {/* Controls */}
         <ControlPanel batchStatus={batchStatus} setBatchStatus={setBatchStatus} />
       </ScrollView>

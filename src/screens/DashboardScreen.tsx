@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ChevronRight, ChevronLeft, Calendar } from 'lucide-react-native';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
@@ -8,19 +8,9 @@ import { LineChart } from 'react-native-chart-kit';
 import HistoryDetailsModal, { type HistoryDetailsItem } from '../components/HistoryDetailsModal';
 import { useMachineStore } from '../stores/machineStore';
 import { fetchWithAuth } from '../config/api';
+import { Batch } from '../types';
 
 const screenWidth = Dimensions.get('window').width - 64;
-
-interface Batch {
-  id: string;
-  batchNumber?: string;
-  machineId: string;
-  estimatedWeight: number;
-  actualWeight?: number;
-  status: string;
-  createdAt: string;
-  completedAt?: string;
-}
 
 export default function DashboardScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -30,19 +20,26 @@ export default function DashboardScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchServerBatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMachine?.id]);
+
+  useEffect(() => {
+    if (serverBatches.length > 0) {
+      setCurrentBatch(null);
+      useMachineStore.setState({ batches: serverBatches });
+    }
+  }, [serverBatches, setCurrentBatch]);
 
   const fetchServerBatches = async () => {
     try {
       setLoadingBatches(true);
-      const endpoint = selectedMachine?.machineId 
+      const endpoint = selectedMachine?.machineId
         ? `/batches?machineId=${selectedMachine.machineId}`
         : '/batches';
       const res = await fetchWithAuth(endpoint);
       const data = await res.json();
       setServerBatches(Array.isArray(data) ? data : data.batches || []);
     } catch (err) {
-      console.error('Failed to fetch batches:', err);
       setServerBatches([]);
     } finally {
       setLoadingBatches(false);
@@ -52,11 +49,13 @@ export default function DashboardScreen({ navigation }: any) {
   const machineName = selectedMachine?.name ?? 'Select a machine';
   const machineLabel = machineName;
 
+  const totalFeedOutput = serverBatches.reduce((sum, b) => sum + (b.feedOutput ?? 0), 0);
+  const totalCompostOutput = serverBatches.reduce((sum, b) => sum + (b.compostOutput ?? 0), 0);
   const machineBatches = selectedMachine
     ? batches.filter((b) => b.machineId === selectedMachine.id)
     : batches;
 
-  // Generate chart data from real batches (last 7 days)
+  // Generate chart data for total output (feed + compost) per day (last 7 days) from serverBatches
   const generateChartData = () => {
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -64,47 +63,48 @@ export default function DashboardScreen({ navigation }: any) {
       return d.toDateString();
     });
 
-    const data = last7Days.map(dateStr => {
-      const dayBatches = machineBatches.filter(b => {
-        const batchDate = b.endTime 
+    const totalData = last7Days.map(dateStr => {
+      const dayBatches = serverBatches.filter(b => {
+        const batchDate = b.endTime
           ? new Date(b.endTime).toDateString()
           : b.startTime
           ? new Date(b.startTime).toDateString()
           : null;
         return batchDate === dateStr;
       });
-      return dayBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+      return dayBatches.reduce((sum, b) => (sum + (b.feedOutput ?? 0) + (b.compostOutput ?? 0)), 0);
     });
 
     const dayLabels = last7Days.map(d => new Date(d).toLocaleDateString(undefined, { weekday: 'short' }));
-
     return {
       labels: dayLabels,
-      datasets: [{
-        data: data.length > 0 ? data : [0],
-        color: (opacity = 1) => `rgba(46,125,50, ${opacity})`,
-        strokeWidth: 2,
-      }],
+      datasets: [
+        {
+          data: totalData.length > 0 ? totalData : [0],
+          color: (opacity = 1) => `rgba(46,125,50, ${opacity})`,
+          strokeWidth: 2,
+        },
+      ],
     };
   };
 
   const machineData = generateChartData();
 
   // Generate output history from real batches (deduplicated by batch number/id)
-  const outputHistoryMap = new Map();
+  const outputHistoryMap = new Map<string, { date: string; weight: string }>();
   machineBatches
-    .filter(b => b.endTime || b.startTime)
+    .filter((b) => b.endTime || b.startTime)
     .sort((a, b) => {
-      const aTime = a.endTime ? new Date(a.endTime).getTime() : new Date(a.startTime!).getTime();
-      const bTime = b.endTime ? new Date(b.endTime).getTime() : new Date(b.startTime!).getTime();
+      const aTime = a.endTime ? new Date(a.endTime as any).getTime() : a.startTime ? new Date(a.startTime as any).getTime() : 0;
+      const bTime = b.endTime ? new Date(b.endTime as any).getTime() : b.startTime ? new Date(b.startTime as any).getTime() : 0;
       return bTime - aTime;
     })
-    .forEach(b => {
+    .forEach((b) => {
       const key = b.batchNumber ?? b.id;
       if (!outputHistoryMap.has(key)) {
         outputHistoryMap.set(key, {
           date: (b.endTime || b.startTime)
-            ? new Date(b.endTime || b.startTime!).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+            ? new Date((b.endTime || b.startTime) as any).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
             : 'Unknown',
           weight: `${b.actualWeight ?? 0} kg`,
         });
@@ -112,9 +112,9 @@ export default function DashboardScreen({ navigation }: any) {
     });
   const outputHistory = Array.from(outputHistoryMap.values()).slice(0, 3);
 
-  const totalOutput = machineBatches.reduce((sum, b) => sum + (b.actualWeight ?? 0), 0);
+  const totalOutput = machineBatches.reduce((sum: number, b) => sum + (b.actualWeight ?? 0), 0);
 
-  const [historyOpen, setHistoryOpen] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const historySource = selectedMachine
     ? batches.filter((b) => b.machineId === selectedMachine.id)
@@ -124,29 +124,25 @@ export default function DashboardScreen({ navigation }: any) {
   historySource
     .slice()
     .sort((a, b) => {
-      const aTime = a.endTime ? new Date(a.endTime).getTime() : a.startTime ? new Date(a.startTime).getTime() : 0;
-      const bTime = b.endTime ? new Date(b.endTime).getTime() : b.startTime ? new Date(b.startTime).getTime() : 0;
+      const aTime = a.endTime ? new Date(a.endTime as any).getTime() : a.startTime ? new Date(a.startTime as any).getTime() : 0;
+      const bTime = b.endTime ? new Date(b.endTime as any).getTime() : b.startTime ? new Date(b.startTime as any).getTime() : 0;
       return bTime - aTime;
     })
     .forEach((b) => {
       const key = b.batchNumber ?? b.id;
       if (historyMap.has(key)) return;
 
-      const total = b.actualWeight ?? 0;
-      let feedKg = 0;
-      let compostKg = 0;
-      if (b.type === 'feed') feedKg = total;
-      else if (b.type === 'compost') compostKg = total;
-      else {
-        // mixed: split weight equally
+      let feedKg = b.feedOutput ?? 0;
+      let compostKg = b.compostOutput ?? 0;
+      if (feedKg === 0 && compostKg === 0) {
+        const total = b.actualWeight ?? 0;
         feedKg = Math.round(total / 2);
         compostKg = total - feedKg;
       }
-      const date = b.endTime
-        ? new Date(b.endTime).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
-        : b.startTime
-        ? new Date(b.startTime).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
-        : 'Unknown';
+      const endedDate = b.endTime;
+      const date = endedDate
+        ? new Date(endedDate as any).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+        : 'N/A';
 
       historyMap.set(key, { date, batch: key, feedKg, compostKg });
     });
@@ -157,14 +153,14 @@ export default function DashboardScreen({ navigation }: any) {
   const recentBatches = batches
     .slice()
     .sort((a, b) => {
-      const aTime = a.endTime ? new Date(a.endTime).getTime() : a.startTime ? new Date(a.startTime).getTime() : 0;
-      const bTime = b.endTime ? new Date(b.endTime).getTime() : b.startTime ? new Date(b.startTime).getTime() : 0;
+      const aTime = a.endTime ? new Date(a.endTime as any).getTime() : a.startTime ? new Date(a.startTime as any).getTime() : 0;
+      const bTime = b.endTime ? new Date(b.endTime as any).getTime() : b.startTime ? new Date(b.startTime as any).getTime() : 0;
       return bTime - aTime;
     })
     .slice(0, 3);
 
   return (
-    <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}> 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 80 + insets.bottom, flexGrow: 1 }}>
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Lobby')} activeOpacity={0.8}>
@@ -176,8 +172,9 @@ export default function DashboardScreen({ navigation }: any) {
 
         {/* Machine Card */}
         <View style={styles.machineCard}>
-          <Text style={styles.machineTitle}>{machineLabel} - {totalOutput} kg</Text>
-          <Text style={styles.machineSubtitle}>Total Output</Text>
+           <Text style={styles.machineTitle}>{machineLabel}</Text>
+           <Text style={styles.machineSubtitle}>Total Feed Output: {totalFeedOutput} kg</Text>
+           <Text style={styles.machineSubtitle}>Total Compost Output: {totalCompostOutput} kg</Text>
           
           <LineChart
             data={machineData}

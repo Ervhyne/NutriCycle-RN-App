@@ -54,7 +54,7 @@ export default function SummaryScreen({ navigation }: any) {
             <View style={styles.divider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Status</Text>
-              <Text style={[styles.infoValue, styles.statusBadge]}>{currentBatch.status}</Text>
+              <Text style={[styles.infoValue, styles.statusBadge]}>Completed</Text>
             </View>
           </View>
 

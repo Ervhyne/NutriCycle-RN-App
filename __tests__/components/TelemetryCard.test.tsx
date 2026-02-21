@@ -1,19 +1,39 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, screen, act } from '@testing-library/react-native';
+import { waitFor } from '@testing-library/react-native';
 import TelemetryCard from '../../src/components/TelemetryCard';
+import * as api from '../../src/config/api';
 import { MachineTelemetry } from '../../src/types';
 
 describe('TelemetryCard Component', () => {
-  it('should render with null telemetry data', () => {
-    const { getByText } = render(<TelemetryCard telemetry={null} />);
-    
+    beforeAll(() => {
+      jest.spyOn(api, 'fetchWithAuth').mockImplementation(async () => {
+        return {
+          json: async () => [{
+            humidity: 50,
+            temperature: 65,
+            feedStatus: 'feed',
+          }],
+        };
+      });
+    });
+    afterAll(() => {
+      jest.restoreAllMocks();
+    });
+  it('should render with null telemetry data and show batch values', async () => {
+    const { getByText } = render(<TelemetryCard telemetry={null} batchStatus={null} />);
     expect(getByText('Motor Status')).toBeTruthy();
     expect(getByText('idle')).toBeTruthy();
     expect(getByText('Temperature')).toBeTruthy();
     expect(getByText('Humidity')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('65')).toBeTruthy(); // batch temperature
+      expect(getByText('50')).toBeTruthy(); // batch humidity
+      expect(getByText('feed')).toBeTruthy(); // batch feedStatus
+    });
   });
 
-  it('should display telemetry data correctly', () => {
+  it('should display motor state and batch values', async () => {
     const mockTelemetry: MachineTelemetry = {
       motorState: 'running',
       grinderRPM: 1500,
@@ -22,24 +42,23 @@ describe('TelemetryCard Component', () => {
       diverterPosition: 'feed',
       doorState: 'closed',
     };
-
-    const { getByText } = render(<TelemetryCard telemetry={mockTelemetry} />);
-    
+    const { getByText } = render(<TelemetryCard telemetry={mockTelemetry} batchStatus={null} />);
     expect(getByText('running')).toBeTruthy();
-    expect(getByText('65')).toBeTruthy();
-    expect(getByText('50')).toBeTruthy();
-    expect(getByText('feed')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('65')).toBeTruthy(); // batch temperature
+      expect(getByText('50')).toBeTruthy(); // batch humidity
+      expect(getByText('feed')).toBeTruthy(); // batch feedStatus
+    });
   });
 
-  it('should display default values when telemetry is null', () => {
-    const { getAllByText } = render(<TelemetryCard telemetry={null} />);
-    
+  it('should display default values when offline', async () => {
+    const { getAllByText } = render(<TelemetryCard telemetry={null} batchStatus={null} isOnline={false} />);
     expect(getAllByText('idle')).toBeTruthy(); // default motorState
     const dashTexts = getAllByText('--');
     expect(dashTexts.length).toBeGreaterThan(0); // default values (multiple dashes)
   });
 
-  it('should update when telemetry data changes', () => {
+  it('should update motor state when telemetry changes', async () => {
     const initialTelemetry: MachineTelemetry = {
       motorState: 'idle',
       grinderRPM: 0,
@@ -48,14 +67,14 @@ describe('TelemetryCard Component', () => {
       diverterPosition: 'neutral',
       doorState: 'open',
     };
-
-    const { rerender, getByText } = render(
-      <TelemetryCard telemetry={initialTelemetry} />
+    const rendered = render(
+      <TelemetryCard telemetry={initialTelemetry} batchStatus={null} />
     );
-
+    const { rerender, getByText } = rendered;
     expect(getByText('idle')).toBeTruthy();
-    expect(getByText('20')).toBeTruthy();
-
+    await waitFor(() => {
+      expect(getByText('65')).toBeTruthy(); // batch temperature
+    });
     const updatedTelemetry: MachineTelemetry = {
       motorState: 'running',
       grinderRPM: 2000,
@@ -64,50 +83,37 @@ describe('TelemetryCard Component', () => {
       diverterPosition: 'compost',
       doorState: 'closed',
     };
-
-    rerender(<TelemetryCard telemetry={updatedTelemetry} />);
-
+    rerender(<TelemetryCard telemetry={updatedTelemetry} batchStatus={null} />);
     expect(getByText('running')).toBeTruthy();
-    expect(getByText('75')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('65')).toBeTruthy(); // batch temperature
+    });
   });
 
   it('should handle motor states correctly', () => {
     const motorStates: Array<'idle' | 'running' | 'paused'> = ['idle', 'running', 'paused'];
-
     motorStates.forEach((state) => {
-      const telemetry: MachineTelemetry = {
+      const rendered = render(<TelemetryCard telemetry={{
         motorState: state,
         grinderRPM: 1000,
         dryerTemperature: 60,
         humidity: 45,
         diverterPosition: 'feed',
         doorState: 'closed',
-      };
-
-      const { getByText } = render(<TelemetryCard telemetry={telemetry} />);
-      expect(getByText(state)).toBeTruthy();
+      }} batchStatus={null} />);
+      const { getByText } = rendered;
+      expect(getByText(state === 'paused' ? 'idle' : state)).toBeTruthy();
     });
   });
 
-  it('should display all diverter positions', () => {
-    const diverterPositions: Array<'feed' | 'compost' | 'neutral'> = ['feed', 'compost', 'neutral'];
-
-    diverterPositions.forEach((position) => {
-      const telemetry: MachineTelemetry = {
-        motorState: 'running',
-        grinderRPM: 1000,
-        dryerTemperature: 60,
-        humidity: 45,
-        diverterPosition: position,
-        doorState: 'closed',
-      };
-
-      const { getByText } = render(<TelemetryCard telemetry={telemetry} />);
-      expect(getByText(position)).toBeTruthy();
+  it('should display batch feedStatus (processing)', async () => {
+    const { getByText } = render(<TelemetryCard telemetry={null} batchStatus={null} />);
+    await waitFor(() => {
+      expect(getByText('feed')).toBeTruthy(); // batch feedStatus
     });
   });
 
-  it('should render container with correct structure', () => {
+  it('should render container with correct structure', async () => {
     const mockTelemetry: MachineTelemetry = {
       motorState: 'running',
       grinderRPM: 1500,
@@ -116,12 +122,15 @@ describe('TelemetryCard Component', () => {
       diverterPosition: 'feed',
       doorState: 'closed',
     };
-
-    const { getByText } = render(<TelemetryCard telemetry={mockTelemetry} />);
-    
+    const { getByText } = render(<TelemetryCard telemetry={mockTelemetry} batchStatus={null} />);
     // Verify all required sections are present
     expect(getByText('Motor Status')).toBeTruthy();
     expect(getByText('Temperature')).toBeTruthy();
     expect(getByText('Humidity')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText('65')).toBeTruthy();
+      expect(getByText('50')).toBeTruthy();
+      expect(getByText('feed')).toBeTruthy();
+    });
   });
 });

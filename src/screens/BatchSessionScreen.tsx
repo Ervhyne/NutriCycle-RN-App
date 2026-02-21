@@ -2,7 +2,7 @@ import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
-import BatchSessionNavigator from '../navigation/BatchSessionNavigator';
+import MachineScreen from './MachineScreen';
 import ScreenTitle from '../components/ScreenTitle';
 import { colors } from '../theme/colors';
 import { useMachineStore } from '../stores/machineStore';
@@ -81,7 +81,7 @@ export default function BatchSessionScreen({ navigation, route }: any) {
       </View>
 
       <View style={styles.contentWrap}>
-        <BatchSessionNavigator />
+        <MachineScreen navigation={navigation} />
       </View>
     </SafeAreaView>
   );

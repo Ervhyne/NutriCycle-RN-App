@@ -27,8 +27,6 @@ export default function App() {
           require('./assets/Vermicasting.gif'),
           require('./assets/Add Machine Asset.png'),
           require('./assets/Machine Asset.png'),
-          require('./assets/composticon.png'),
-          require('./assets/nutricyclelogo.png'),
           require('./assets/Compostcompletion.png'),
         ];
 

@@ -73,12 +73,15 @@ export const HistoryScreen = () => {
       const response = await fetchWithAuth('/batches', {
         method: 'GET',
       });
-
+      console.log('fetchWithAuth response:', response); // DEBUG: print fetchWithAuth response object
       if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('Failed to fetch batch history:', response.status, errorBody); // DEBUG: print error status and body
         throw new Error('Failed to fetch batch history');
       }
 
       const batches = await response.json();
+      console.log('API response batches:', batches); // DEBUG: print raw API response
       
       // Map API response to BatchRecord format - process data is included via relation
       const uniqueBatches = new Map<string, BatchRecord>();
@@ -87,8 +90,7 @@ export const HistoryScreen = () => {
         // Only add if not already in map (prevents duplicates)
         if (!uniqueBatches.has(batch.id)) {
           const startDate = batch.startedAt ? new Date(batch.startedAt) : new Date(batch.createdAt);
-          
-          uniqueBatches.set(batch.id, {
+          const mappedBatch = {
             id: batch.id,
             machineName: batch.machine?.name || batch.machine?.machineId || 'Unknown',
             batchNumber: batch.batchNumber,
@@ -108,11 +110,13 @@ export const HistoryScreen = () => {
             status: batch.status,
             estimatedWeight: batch.estimatedWeight,
             actualWeight: batch.actualWeight,
-            compostOutput: batch.process?.compostOutputWeight,
-            feedOutput: batch.process?.feedOutputWeight,
-            compostStatus: batch.process?.compostStatus,
-            feedStatus: batch.process?.feedStatus,
-          });
+            compostOutput: batch.compostOutput,
+            feedOutput: batch.feedOutput,
+            compostStatus: batch.compostStatus,
+            feedStatus: batch.feedStatus,
+          };
+          console.log('Mapped batch:', mappedBatch); // DEBUG: print mapped batch
+          uniqueBatches.set(batch.id, mappedBatch);
         }
       });
       
@@ -241,6 +245,7 @@ export const HistoryScreen = () => {
             <Text style={styles.infoValue}>
               {item.estimatedWeight ? `${item.estimatedWeight} kg` : '--'}
             </Text>
+           
           </View>
         </View>
       </View>
