@@ -29,6 +29,7 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
+      'react-hooks': require('eslint-plugin-react-hooks'),
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
@@ -38,6 +39,8 @@ module.exports = [
       'no-undef': 'off',
       'no-console': 'off',
       'no-useless-escape': 'off',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/rules-of-hooks': 'error',
     },
   },
 ];
