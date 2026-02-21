@@ -8,13 +8,29 @@ import { MachineTelemetry } from '../../src/types';
 describe('TelemetryCard Component', () => {
     beforeAll(() => {
       jest.spyOn(api, 'fetchWithAuth').mockImplementation(async () => {
-        return {
+        const mockResponse = {
           json: async () => [{
             humidity: 50,
             temperature: 65,
             feedStatus: 'feed',
           }],
-        };
+          headers: new Headers(),
+          ok: true,
+          redirected: false,
+          status: 200,
+          statusText: 'OK',
+          type: 'basic',
+          url: '',
+          clone: () => mockResponse,
+          body: null,
+          bodyUsed: false,
+          arrayBuffer: async () => new ArrayBuffer(0),
+          blob: async () => new Blob(),
+          formData: async () => new FormData(),
+          text: async () => '',
+          bytes: async () => new Uint8Array(0),
+        } as Response;
+        return mockResponse;
       });
     });
     afterAll(() => {
