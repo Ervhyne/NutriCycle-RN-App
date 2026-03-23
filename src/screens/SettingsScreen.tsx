@@ -60,7 +60,7 @@ export const SettingsScreen = () => {
       Alert.alert('Error', 'Failed to log out. Please try again.');
     } finally {
       setLoggingOut(false);
-      setLogoutModalVisible(false);
+      setLogoutModalVisible(false); 
     }
   };
 

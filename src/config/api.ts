@@ -8,7 +8,6 @@ export async function getApiBaseUrl(): Promise<string> {
 
 export async function fetchWithAuth(path: string, init?: RequestInit): Promise<Response> {
   const baseUrl = await getApiBaseUrl();
-  console.log('API base URL:', baseUrl); // DEBUG: print API base URL
   if (!baseUrl) {
     throw new Error('API base URL not configured in environment variables');
   }
@@ -27,7 +26,7 @@ export async function fetchWithAuth(path: string, init?: RequestInit): Promise<R
   // Remove duplicate slashes
   cleanPath = cleanPath.replace(/\/+$/, '').replace(/^\/+/, '/');
 
-  const token = await auth.currentUser?.getIdToken(true);
+  const token = await auth.currentUser?.getIdToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',

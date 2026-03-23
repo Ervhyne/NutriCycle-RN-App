@@ -151,7 +151,7 @@ export const LoginScreen = () => {
         updatedBy: userId,
       }, { merge: true });
 
-      // Conditionally set base API URL in Settings if missing (so Machines can read it)
+      // Conditionally set base API URL in Firestore if missing
       try {
         const currentSettings = await getDoc(settingsRef);
         const hasUrl = currentSettings.exists() && !!(currentSettings.data() as any)?.url;
@@ -162,7 +162,7 @@ export const LoginScreen = () => {
           }
         }
       } catch (e) {
-        console.warn('Failed to set base API URL in Settings:', e);
+        console.warn('Failed to set base API URL in Firestore:', e);
       }
 
       setLoading(false);
@@ -236,7 +236,7 @@ export const LoginScreen = () => {
         updatedBy: userId,
       }, { merge: true });
 
-      // Conditionally set base API URL in Settings if missing (so Machines can read it)
+      // Conditionally set base API URL in Firestore if missing
       try {
         const currentSettings = await getDoc(settingsRef);
         const hasUrl = currentSettings.exists() && !!(currentSettings.data() as any)?.url;
@@ -247,7 +247,7 @@ export const LoginScreen = () => {
           }
         }
       } catch (e) {
-        console.warn('Failed to set base API URL in Settings:', e);
+        console.warn('Failed to set base API URL in Firestore:', e);
       }
 
       setPendingLoginCredentials(null);

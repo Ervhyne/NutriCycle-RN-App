@@ -49,9 +49,13 @@ export const HistoryScreen = () => {
   const [showPicker, setShowPicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Fetch batches when screen loads and when it comes into focus
+  // Fetch batches when screen loads and poll every 5 seconds
   useEffect(() => {
     fetchBatches();
+    const interval = setInterval(() => {
+      fetchBatches(false, true); // silent polling
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Refetch when screen comes into focus (e.g., after creating a batch)
@@ -61,9 +65,11 @@ export const HistoryScreen = () => {
     }, [])
   );
 
-  const fetchBatches = async (isRefresh = false) => {
+  const fetchBatches = async (isRefresh = false, silent = false) => {
     try {
-      if (isRefresh) {
+      if (silent) {
+        // Silent polling - don't show any loading indicator
+      } else if (isRefresh) {
         setIsRefreshing(true);
       } else {
         setIsLoading(true);
@@ -73,7 +79,6 @@ export const HistoryScreen = () => {
       const response = await fetchWithAuth('/batches', {
         method: 'GET',
       });
-      console.log('fetchWithAuth response:', response); // DEBUG: print fetchWithAuth response object
       if (!response.ok) {
         const errorBody = await response.text();
         console.error('Failed to fetch batch history:', response.status, errorBody); // DEBUG: print error status and body
@@ -81,7 +86,6 @@ export const HistoryScreen = () => {
       }
 
       const batches = await response.json();
-      console.log('API response batches:', batches); // DEBUG: print raw API response
       
       // Map API response to BatchRecord format - process data is included via relation
       const uniqueBatches = new Map<string, BatchRecord>();
@@ -115,7 +119,6 @@ export const HistoryScreen = () => {
             compostStatus: batch.compostStatus,
             feedStatus: batch.feedStatus,
           };
-          console.log('Mapped batch:', mappedBatch); // DEBUG: print mapped batch
           uniqueBatches.set(batch.id, mappedBatch);
         }
       });
@@ -126,7 +129,9 @@ export const HistoryScreen = () => {
       console.error('Error fetching batches:', err);
       setError('Failed to load batch history');
     } finally {
-      if (isRefresh) {
+      if (silent) {
+        // Silent polling - no state to reset
+      } else if (isRefresh) {
         setIsRefreshing(false);
       } else {
         setIsLoading(false);

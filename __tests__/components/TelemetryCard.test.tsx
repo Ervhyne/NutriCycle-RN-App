@@ -122,6 +122,19 @@ describe('TelemetryCard Component', () => {
     });
   });
 
+  it('should prioritize running batchStatus over idle telemetry motor state', () => {
+    const { getByText } = render(<TelemetryCard telemetry={{
+      motorState: 'idle',
+      grinderRPM: 0,
+      dryerTemperature: 20,
+      humidity: 30,
+      diverterPosition: 'neutral',
+      doorState: 'closed',
+    }} batchStatus={'running'} />);
+
+    expect(getByText('running')).toBeTruthy();
+  });
+
   it('should display batch feedStatus (processing)', async () => {
     const { getByText } = render(<TelemetryCard telemetry={null} batchStatus={null} />);
     await waitFor(() => {

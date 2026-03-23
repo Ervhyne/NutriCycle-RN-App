@@ -27,7 +27,7 @@ import { fetchWithAuth, getApiBaseUrl } from '../config/api';
 
 
 export default function MachineLobbyScreen({ navigation }: any) {
-  const { machines, selectMachine, removeMachine, updateMachine, batches, setMachines, clearMachine } = useMachineStore();
+  const { machines, selectMachine, removeMachine, updateMachine, batches, setMachines } = useMachineStore();
   const insets = useSafeAreaInsets();
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -37,13 +37,25 @@ export default function MachineLobbyScreen({ navigation }: any) {
   const [machineToEdit, setMachineToEdit] = useState<Machine | null>(null);
   const [editedName, setEditedName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   useEffect(() => {
-    fetchMachinesFromFirestore();
+    // Only show loading on first load, not when returning from another screen
+    if (!initialLoadDone && machines.length === 0) {
+      fetchMachinesFromFirestore(true);
+    } else {
+      // Silent refresh when returning
+      fetchMachinesFromFirestore(false);
+    }
+    // Poll every 5 seconds for auto-updates (silent)
+    const interval = setInterval(() => {
+      fetchMachinesFromFirestore(false);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchMachinesFromFirestore = async () => {
-    setLoading(true);
+  const fetchMachinesFromFirestore = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const userId = auth.currentUser?.uid;
       if (!userId) {
@@ -52,15 +64,13 @@ export default function MachineLobbyScreen({ navigation }: any) {
         return;
       }
 
-      // Read API base URL via helper (Settings or env)
+      // Read API base URL from environment variable
       const apiUrl = await getApiBaseUrl();
       if (!apiUrl) {
-        Alert.alert('Error', 'No API URL configured. Please set it in Settings.');
+        Alert.alert('Error', 'No API URL configured.');
         setLoading(false);
         return;
       }
-
-      console.log('Fetching machines from API:', apiUrl);
 
       // Fetch machines from the API server using the helper
       const endpoint = `/machines?userId=${userId}`;
@@ -85,14 +95,13 @@ export default function MachineLobbyScreen({ navigation }: any) {
         isOnline: m.status === 'online' || m.status === 'running',
       }));
 
-      // Replace machines with the latest list from API to avoid stale entries between accounts
-      clearMachine();
+      // Replace machines with the latest list from API
       setMachines(machinesData);
 
-      console.log(`Loaded ${machinesData.length} machines from API`);
+      setInitialLoadDone(true);
     } catch (error) {
       console.error('Error fetching machines from API:', error);
-      Alert.alert('Error', 'Failed to load machines from server. Please check your API URL in Settings.');
+      Alert.alert('Error', 'Failed to load machines from server.');
     } finally {
       setLoading(false);
     }
