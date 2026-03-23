@@ -95,7 +95,7 @@ interface MachineStore {
   // API actions for batch process
   
   // RPI control actions (send commands to Raspberry Pi)
-  startRPIProcessing: () => Promise<void>;
+  emergencyStopRPI: () => Promise<void>;
   stopRPIProcessing: () => Promise<void>;
   getRPIStatus: () => Promise<any>;
 }
@@ -467,34 +467,29 @@ export const useMachineStore = create<MachineStore>((set) => ({
   },
 
   // RPI control actions
-  startRPIProcessing: async () => {
+  emergencyStopRPI: async () => {
     const { currentBatch, selectedMachine } = useMachineStore.getState();
-    if (!currentBatch) {
-      console.error('[RPI API] No current batch to start');
-      throw new Error('No batch selected');
-    }
-
     if (!selectedMachine?.id) {
       console.error('[RPI API] No machine selected');
       throw new Error('No machine selected');
     }
 
     try {
-      console.log(`[RPI API] Sending start command to port 8080 for batch ${currentBatch.id}, machine ${selectedMachine.id}`);
-      
-      const response = await fetchWithAuth('/rpi/start', {
+      console.log(`[RPI API] Sending emergency stop for machine ${selectedMachine.id}`);
+
+      const response = await fetchWithAuth('/rpi/emergency-stop', {
         method: 'POST',
         body: JSON.stringify({
-          batchId: currentBatch.id,
-          machineId: selectedMachine.id,
+          batchId: currentBatch?.id,
+          machineId: selectedMachine.machineId || selectedMachine.id,
         }),
       });
-      
+
       const result = await response.json();
-      console.log('[RPI API] Start command sent:', result);
+      console.log('[RPI API] Emergency stop acknowledged:', result);
       return result;
     } catch (error) {
-      console.error('[RPI API] Failed to start RPI processing:', error);
+      console.error('[RPI API] Failed to trigger emergency stop:', error);
       throw error;
     }
   },

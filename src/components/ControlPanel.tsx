@@ -62,6 +62,14 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
     setLoadingButton('stop');
     try {
       const apiBase = await getApiBaseUrl();
+      const machineId = selectedMachine.machineId || selectedMachine.id;
+
+      await fetchWithAuth(`${apiBase}/rpi/emergency-stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ machineId }),
+      });
+
       // Fetch latest batch for this machine
       const res = await fetchWithAuth(`${apiBase}/batches?machineId=${selectedMachine.machineId}&limit=1&order=desc`);
       const batches = await res.json();
@@ -76,7 +84,7 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
       // Re-fetch after stop
       await fetchBatchStatus();
     } catch (err) {
-      alert('Failed to stop batch');
+      alert('Emergency stop was not acknowledged. Please retry.');
     } finally {
       setLoadingButton(null);
     }
