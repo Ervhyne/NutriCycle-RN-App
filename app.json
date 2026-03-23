@@ -25,7 +25,12 @@
       "package": "com.yourcompany.nutricycle",
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/Logo.png"
@@ -34,6 +39,12 @@
       "expo-video",
       "expo-audio",
       "expo-barcode-scanner"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4301eaf8-b1e8-4b0b-b9ed-39722db88ad8"
+      }
+    },
+    "owner": "nutricycle-team"
   }
 }
