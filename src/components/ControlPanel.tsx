@@ -64,23 +64,29 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
       const apiBase = await getApiBaseUrl();
       const machineId = selectedMachine.machineId || selectedMachine.id;
 
-      await fetchWithAuth(`${apiBase}/rpi/emergency-stop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ machineId }),
-      });
-
       // Fetch latest batch for this machine
       const res = await fetchWithAuth(`${apiBase}/batches?machineId=${selectedMachine.machineId}&limit=1&order=desc`);
       const batches = await res.json();
-      if (batches && batches.length > 0) {
-        const batch = batches[0];
-        await fetchWithAuth(`${apiBase}/batches/${batch.batchNumber}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'idle' })
-        });
+      if (!batches || batches.length === 0) {
+        throw new Error('No active batch found');
       }
+
+      const batch = batches[0];
+
+      await fetchWithAuth(`${apiBase}/rpi/emergency-stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          machineId,
+          batchId: batch.batchNumber || batch.id,
+        }),
+      });
+
+      await fetchWithAuth(`${apiBase}/batches/${batch.batchNumber}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'idle' })
+      });
       // Re-fetch after stop
       await fetchBatchStatus();
     } catch (err) {
