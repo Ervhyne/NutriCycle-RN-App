@@ -73,7 +73,7 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
 
       const batch = batches[0];
 
-      await fetchWithAuth(`${apiBase}/rpi/emergency-stop`, {
+      const stopResponse = await fetchWithAuth(`${apiBase}/rpi/emergency-stop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,16 +81,19 @@ export default function ControlPanel({ batchStatus, setBatchStatus }: {
           batchId: batch.batchNumber || batch.id,
         }),
       });
+      const stopResult = await stopResponse.json();
+      if (!stopResult?.success) {
+        throw new Error(stopResult?.error || 'Emergency stop failed');
+      }
 
-      await fetchWithAuth(`${apiBase}/batches/${batch.batchNumber}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'idle' })
-      });
+      if (stopResult.dispatched === false && stopResult.dispatchError) {
+        alert(`Emergency stop saved in database, but device dispatch failed: ${stopResult.dispatchError}`);
+      }
+
       // Re-fetch after stop
       await fetchBatchStatus();
     } catch (err) {
-      alert('Emergency stop was not acknowledged. Please retry.');
+      alert('Emergency stop failed. Please retry.');
     } finally {
       setLoadingButton(null);
     }
