@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { act } from 'react';
-import { getApiBaseUrl, fetchWithAuth } from '../config/api';
+import { fetchWithAuth } from '../config/api';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { colors } from '../theme/colors';
 import { MachineTelemetry } from '../types';
@@ -18,10 +17,14 @@ export default function TelemetryCard({
   navigation?: any;
 }) {
   const floatAnim = useRef(new Animated.Value(0)).current;
-  const motorState: 'idle' | 'running' | 'completed' | 'error' =
+  const telemetryMotorState: 'idle' | 'running' =
     telemetry?.motorState === 'paused'
       ? 'idle'
       : telemetry?.motorState ?? 'idle';
+  const motorState: 'idle' | 'running' | 'completed' | 'error' =
+    batchStatus === 'running' || batchStatus === 'completed' || batchStatus === 'error'
+      ? batchStatus
+      : telemetryMotorState;
   const [humidity, setHumidity] = React.useState('--');
   const [temp, setTemp] = React.useState('--');
   const [feedStatus, setFeedStatus] = React.useState('--');

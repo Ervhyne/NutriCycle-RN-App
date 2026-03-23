@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -70,17 +71,22 @@ export default function AddMachineScreen({ navigation }: any) {
       const apiUrl = await getApiBaseUrl();
       if (!apiUrl) {
         setErrorTitle('Configuration');
-        setErrorMessage('No API URL configured. Please set it in Settings.');
+        setErrorMessage('No API URL configured.');
         setErrorModalVisible(true);
         setLoading(false);
         return;
       }
+
+      const userId = auth.currentUser?.uid ?? await AsyncStorage.getItem('loggedInUserId');
+      const userEmail = auth.currentUser?.email ?? await AsyncStorage.getItem('loggedInUserEmail');
 
       const response = await fetchWithAuth('/machines/register', {
         method: 'POST',
         body: JSON.stringify({
           machineId: machineId.trim().toUpperCase(),
           name: machineName.trim(),
+          userId,
+          email: userEmail,
         }),
       });
 

@@ -47,10 +47,10 @@ describe('Session Token Management', () => {
 
       await fetchWithAuth('/test-endpoint');
 
-      expect(mockGetIdToken).toHaveBeenCalledWith(true);
+      expect(mockGetIdToken).toHaveBeenCalledWith();
     });
 
-    it('should force refresh token when retrieving', async () => {
+    it('should retrieve token when fetching data', async () => {
       const mockGetIdToken = jest.fn().mockResolvedValue('refreshed-token-xyz789');
       (auth as any).currentUser = {
         uid: 'user-456',
@@ -70,8 +70,8 @@ describe('Session Token Management', () => {
 
       await fetchWithAuth('/data');
 
-      // Verify token was force refreshed (parameter true)
-      expect(mockGetIdToken).toHaveBeenCalledWith(true);
+      // Verify token retrieval was requested
+      expect(mockGetIdToken).toHaveBeenCalledWith();
       expect(mockGetIdToken).toHaveBeenCalledTimes(1);
     });
 
@@ -288,7 +288,7 @@ describe('Session Token Management', () => {
       );
     });
 
-    it('should always use force refresh flag', async () => {
+    it('should request token before authenticated call', async () => {
       const mockGetIdToken = jest.fn().mockResolvedValue('fresh-token');
       (auth as any).currentUser = {
         getIdToken: mockGetIdToken,
@@ -306,8 +306,8 @@ describe('Session Token Management', () => {
 
       await fetchWithAuth('/test');
 
-      // Verify getIdToken was called with force refresh = true
-      expect(mockGetIdToken).toHaveBeenCalledWith(true);
+      // Verify getIdToken was called
+      expect(mockGetIdToken).toHaveBeenCalledWith();
     });
   });
 

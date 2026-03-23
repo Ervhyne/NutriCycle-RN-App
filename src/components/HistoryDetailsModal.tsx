@@ -20,8 +20,6 @@ type Props = {
 export default function HistoryDetailsModal({ visible, data, onClose }: Props) {
   const insets = useSafeAreaInsets();
 
-  console.log('HistoryDetailsModal data:', data); // DEBUG: Show data passed to modal
-
   return (
     <Modal
       visible={visible}

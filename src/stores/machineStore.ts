@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Machine, Batch, BatchProcess, MachineTelemetry, ProcessStep, ProcessType } from '../types';
 import { fetchWithAuth } from '../config/api';
+import { auth } from '../config/firebase';
 
 let telemetryInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -143,8 +145,12 @@ export const useMachineStore = create<MachineStore>((set) => ({
       }
 
       console.log(`[Machine API] Deleting machine ${machine.machineId}`);
+      const userId = auth.currentUser?.uid ?? await AsyncStorage.getItem('loggedInUserId');
+      const endpoint = userId
+        ? `/machines/${machine.machineId}?userId=${encodeURIComponent(userId)}`
+        : `/machines/${machine.machineId}`;
       
-      const response = await fetchWithAuth(`/machines/${machine.machineId}`, {
+      const response = await fetchWithAuth(endpoint, {
         method: 'DELETE',
       });
 
@@ -183,10 +189,15 @@ export const useMachineStore = create<MachineStore>((set) => ({
       }
 
       console.log(`[Machine API] Updating machine ${machine.machineId} with:`, updates);
+      const userId = auth.currentUser?.uid ?? await AsyncStorage.getItem('loggedInUserId');
+      const payload = {
+        ...updates,
+        ...(userId ? { userId } : {}),
+      };
       
       const response = await fetchWithAuth(`/machines/${machine.machineId}`, {
         method: 'PATCH',
-        body: JSON.stringify(updates),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

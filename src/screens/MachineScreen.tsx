@@ -95,20 +95,57 @@ export default function MachineScreen({ navigation }: any) {
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { margin: 0; padding: 0; background: #000; }
-        #player { width: 100%; height: 100vh; }
-        img { width: 100%; height: 100%; object-fit: contain; }
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+        .frame { position: absolute; width: 100%; height: 100%; object-fit: contain; transition: opacity 0.1s ease-in-out; }
+        #frame1, #frame2 { top: 0; left: 0; }
+        #status { color: white; position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; z-index: 10; }
       </style>
     </head>
     <body>
-      <img id="player" src="${streamUrl}" onload="document.getElementById('status').innerText = 'Loaded'" onerror="document.getElementById('status').innerText = 'Error loading stream'">
-      <div id="status" style="color: white; position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;">Loading...</div>
+      <img id="frame1" class="frame" style="opacity: 1;">
+      <img id="frame2" class="frame" style="opacity: 0;">
+      <div id="status">Loading...</div>
       <script>
-        // For MJPEG streams, refresh the image periodically
-        setInterval(function() {
-          var img = document.getElementById('player');
-          img.src = '${streamUrl}?' + new Date().getTime();
-        }, 500);
+        (function() {
+          var frame1 = document.getElementById('frame1');
+          var frame2 = document.getElementById('frame2');
+          var status = document.getElementById('status');
+          var activeFrame = 1;
+          var isLoading = false;
+          var pollInterval = 100;
+          var streamUrl = '${streamUrl}';
+          
+          function loadNextFrame() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            var nextFrame = activeFrame === 1 ? frame2 : frame1;
+            var currentFrame = activeFrame === 1 ? frame1 : frame2;
+            
+            var img = new Image();
+            img.onload = function() {
+              nextFrame.src = img.src;
+              nextFrame.style.opacity = '1';
+              currentFrame.style.opacity = '0';
+              activeFrame = activeFrame === 1 ? 2 : 1;
+              status.innerText = 'Live';
+              isLoading = false;
+            };
+            img.onerror = function() {
+              status.innerText = 'Reconnecting...';
+              isLoading = false;
+            };
+            img.src = streamUrl + (streamUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+          }
+          
+          // Initial load
+          frame1.onload = function() { status.innerText = 'Live'; };
+          frame1.onerror = function() { status.innerText = 'Error loading stream'; };
+          frame1.src = streamUrl;
+          
+          // Start polling with double buffering
+          setInterval(loadNextFrame, pollInterval);
+        })();
       </script>
     </body>
     </html>
