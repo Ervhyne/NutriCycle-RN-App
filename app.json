@@ -18,6 +18,7 @@
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#FBF6C8"
@@ -25,7 +26,12 @@
       "package": "com.yourcompany.nutricycle",
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/Logo.png"
@@ -34,6 +40,11 @@
       "expo-video",
       "expo-audio",
       "expo-barcode-scanner"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "14aac5d2-ccb2-4b9b-abf8-5bed5af939b4"
+      }
+    }
   }
 }
