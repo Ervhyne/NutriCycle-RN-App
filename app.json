@@ -14,8 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.nutricycle",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.yourcompany.nutricycle"
     },
     "android": {
       "versionCode": 1,
@@ -24,7 +23,6 @@
         "backgroundColor": "#FBF6C8"
       },
       "package": "com.yourcompany.nutricycle",
-      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
