@@ -40,11 +40,6 @@
       "expo-video",
       "expo-audio",
       "expo-barcode-scanner"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "14aac5d2-ccb2-4b9b-abf8-5bed5af939b4"
-      }
-    }
+    ]
   }
 }

@@ -497,7 +497,7 @@ export const useMachineStore = create<MachineStore>((set) => ({
       });
 
       const result = await response.json();
-      console.log('[RPI API] Emergency stop acknowledged:', result);
+      console.log('[RPI API] Emergency stop response:', result);
       return result;
     } catch (error) {
       console.error('[RPI API] Failed to trigger emergency stop:', error);
