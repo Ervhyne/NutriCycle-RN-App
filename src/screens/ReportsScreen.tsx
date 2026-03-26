@@ -242,14 +242,14 @@ export default function ReportsScreen() {
                 .slice(0, 3)
                 .map(b => ({
                   date: getBatchDate(b)?.toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) || 'Unknown',
-                  weight: `${b.estimatedWeight ?? 0} kg`,
+                  weight: `${b.estimatedWeight ?? 0} g`,
                 }));
 
               return (
                 <View key={machine.id} style={styles.machineCard}>
                   {/* Header with title and filter */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={styles.machineTitle}>{machine.name || machine.machineId} - {totalEstimatedWeight} kg</Text>
+                    <Text style={styles.machineTitle}>{machine.name || machine.machineId} - {totalEstimatedWeight} g</Text>
                     <View style={{ position: 'relative', zIndex: 100 }}>
                       <TouchableOpacity
                         style={{ padding: 8, borderRadius: 999, backgroundColor: colors.cardBorder }}
@@ -358,7 +358,7 @@ export default function ReportsScreen() {
                         propsForLabels: { fontSize: 11 },
                         propsForDots: { r: '4', strokeWidth: '2', stroke: colors.primary },
                       }}
-                      yAxisSuffix=" kg"
+                      yAxisSuffix=" g"
                       fromZero={true}
                       bezier
                       withHorizontalLines={true}

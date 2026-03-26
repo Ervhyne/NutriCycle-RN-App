@@ -38,12 +38,14 @@ export default function TelemetryCard({
       setLoading(false);
       return;
     }
-    // Fetch latest batch for humidity, temperature, and feedStatus
-    const fetchBatch = async () => {
-      setLoading(true);
+    let mounted = true;
+    // Fetch latest batch for humidity, temperature, and feedStatus.
+    const fetchBatch = async (silent = false) => {
+      if (!silent && mounted) setLoading(true);
       try {
         const res = await fetchWithAuth('/batches?limit=1&order=desc');
         const batches = await res.json();
+        if (!mounted) return;
         if (batches && batches.length > 0) {
           setHumidity(batches[0].humidity?.toString() ?? '--');
           setTemp(batches[0].temperature?.toString() ?? '--');
@@ -54,14 +56,24 @@ export default function TelemetryCard({
           setFeedStatus('--');
         }
       } catch (err) {
+        if (!mounted) return;
         setHumidity('--');
         setTemp('--');
         setFeedStatus('--');
       } finally {
-        setLoading(false);
+        if (!silent && mounted) setLoading(false);
       }
     };
-    fetchBatch();
+
+    fetchBatch(false);
+    const interval = setInterval(() => {
+      fetchBatch(true);
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [isOnline]);
 
   const floatStyle = {

@@ -227,7 +227,7 @@ export const HistoryScreen = () => {
           <View style={styles.batchInfoItem}>
             <Text style={styles.infoLabel}>COMPOST OUTPUT</Text>
             <Text style={[styles.infoValue, { color: colors.success, fontWeight: '700' }]}>
-              {item.compostOutput ? `${item.compostOutput} kg` : '--'}
+              {item.compostOutput ? `${item.compostOutput} g` : '--'}
             </Text>
             {item.compostStatus && (
               <Text style={styles.statusSubtext}>{item.compostStatus}</Text>
@@ -236,7 +236,7 @@ export const HistoryScreen = () => {
           <View style={styles.batchInfoItem}>
             <Text style={styles.infoLabel}>FEED OUTPUT</Text>
             <Text style={[styles.infoValue, { color: colors.primary, fontWeight: '700' }]}>
-              {item.feedOutput ? `${item.feedOutput} kg` : '--'}
+              {item.feedOutput ? `${item.feedOutput} g` : '--'}
             </Text>
             {item.feedStatus && (
               <Text style={styles.statusSubtext}>{item.feedStatus}</Text>
@@ -248,7 +248,7 @@ export const HistoryScreen = () => {
           <View style={styles.batchInfoItem}>
             <Text style={styles.infoLabel}>ESTIMATED WEIGHT</Text>
             <Text style={styles.infoValue}>
-              {item.estimatedWeight ? `${item.estimatedWeight} kg` : '--'}
+              {item.estimatedWeight ? `${item.estimatedWeight} g` : '--'}
             </Text>
            
           </View>

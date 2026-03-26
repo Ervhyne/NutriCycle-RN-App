@@ -225,7 +225,7 @@ export default function DashboardScreen({ navigation }: any) {
           date: batchDate
             ? batchDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
             : 'Unknown',
-          weight: `${b.estimatedWeight ?? 0} kg`,
+          weight: `${b.estimatedWeight ?? 0} g`,
         });
       }
     });
@@ -289,7 +289,7 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.machineCard}>
            {/* Machine Card Header: name and filter icon */}
            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-             <Text style={styles.machineTitle}>{machineLabel} - {serverBatches.reduce((sum, b) => sum + (b.estimatedWeight ?? 0), 0)} kg</Text>
+             <Text style={styles.machineTitle}>{machineLabel} - {serverBatches.reduce((sum, b) => sum + (b.estimatedWeight ?? 0), 0)} g</Text>
              <View style={{ position: 'relative', zIndex: 100 }}>
                <TouchableOpacity
                  style={{ padding: 8, borderRadius: 999, backgroundColor: colors.cardBorder }}
@@ -413,7 +413,7 @@ export default function DashboardScreen({ navigation }: any) {
                   stroke: colors.primary,
                 },
               }}
-              yAxisSuffix=" kg"
+              yAxisSuffix=" g"
               fromZero={true}
               bezier
               withHorizontalLines={true}
@@ -485,7 +485,7 @@ export default function DashboardScreen({ navigation }: any) {
                 </View>
               </View>
               <View style={styles.batchBottomRow}>
-                <Text style={styles.batchMeta}>{b.actualWeight || b.estimatedWeight} kg</Text>
+                <Text style={styles.batchMeta}>{b.actualWeight || b.estimatedWeight} g</Text>
                 {b.status?.toLowerCase() !== 'completed' && (
                   <TouchableOpacity
                     style={styles.viewButton}

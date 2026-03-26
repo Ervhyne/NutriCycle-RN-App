@@ -60,12 +60,12 @@ export default function HistoryDetailsModal({ visible, data, onClose }: Props) {
               <View style={styles.dataRow}>
                 <View style={styles.dataItem}>
                   <Text style={styles.dataLabel}>Feed Output</Text>
-                  <Text style={styles.dataValue}>{item.feedKg} kg</Text>
+                  <Text style={styles.dataValue}>{item.feedKg} g</Text>
                 </View>
                 <View style={styles.dataSeparator} />
                 <View style={styles.dataItem}>
                   <Text style={styles.dataLabel}>Compost Output</Text>
-                  <Text style={styles.dataValue}>{item.compostKg} kg</Text>
+                  <Text style={styles.dataValue}>{item.compostKg} g</Text>
                 </View>
               </View>
             </View>
