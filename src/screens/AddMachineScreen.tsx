@@ -13,8 +13,7 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import { QrCode, Hash, X, PlusCircle } from 'lucide-react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Hash, X, PlusCircle } from 'lucide-react-native';
 import { useMachineStore } from '../stores/machineStore';
 import { colors } from '../theme/colors';
 import ScreenTitle from '../components/ScreenTitle';
@@ -32,10 +31,8 @@ export default function AddMachineScreen({ navigation }: any) {
   const [errorMessage, setErrorMessage] = useState('');
   const [errorTitle, setErrorTitle] = useState('Error');
   const [loading, setLoading] = useState(false);
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanned, setScanned] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
-  const [showNameModal, setShowNameModal] = useState(false);
+  // ...existing code...
+  // ...existing code...
 
   const handleAddMachine = async () => {
     if (!machineId.trim()) {
@@ -119,47 +116,7 @@ export default function AddMachineScreen({ navigation }: any) {
     }
   };
 
-  const handleScanQR = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        Alert.alert(
-          'Camera Permission Required',
-          'Please allow camera access in your device settings to scan QR codes.'
-        );
-        return;
-      }
-    }
-    setScanned(false);
-    setScannerOpen(true);
-  };
-
-  const handleBarCodeScanned = ({ data }: { data: string }) => {
-    if (scanned) return;
-    setScanned(true);
-
-    let scannedMachineId = '';
-    let scannedName = '';
-
-    // Try parsing as JSON (QR may contain { machineId, name })
-    try {
-      const parsed = JSON.parse(data);
-      if (parsed.machineId) {
-        scannedMachineId = parsed.machineId.trim().toUpperCase();
-        scannedName = parsed.name || '';
-      }
-    } catch {
-      // Not JSON — treat as plain machine ID
-      scannedMachineId = data.trim().toUpperCase();
-    }
-
-    setMachineId(scannedMachineId);
-    setMachineName(scannedName);
-    setScannerOpen(false);
-
-    // Show the name modal after QR scan
-    setTimeout(() => setShowNameModal(true), 300);
-  };
+  // QR scan logic removed
 
   return (
     <SafeAreaView style={[styles.container, { paddingBottom: insets.bottom }]}>
@@ -205,15 +162,7 @@ export default function AddMachineScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* QR Scanner Button */}
-        <TouchableOpacity
-          style={styles.scanButton}
-          onPress={handleScanQR}
-          activeOpacity={0.7}
-        >
-          <QrCode size={24} color={colors.primary} />
-          <Text style={styles.scanText}>Scan QR Code</Text>
-        </TouchableOpacity>
+        {/* QR Scanner Button removed */}
 
         {/* Add Button */}
         <TouchableOpacity
@@ -271,73 +220,9 @@ export default function AddMachineScreen({ navigation }: any) {
         )}
       </KeyboardAvoidingView>
 
-      {/* QR Scanner Modal */}
-      <Modal visible={scannerOpen} animationType="slide">
-        <View style={styles.scannerContainer}>
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          />
-          <View style={styles.scannerOverlay}>
-            <View style={styles.scannerFrame} />
-            <Text style={styles.scannerHint}>Point camera at QR code on your NutriCycle device</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.closeButton, { top: 16 + insets.top }]}
-            onPress={() => setScannerOpen(false)}
-          >
-            <X size={28} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      {/* QR Scanner Modal removed */}
 
-      {/* Machine Name Modal (after QR scan) */}
-      <Modal visible={showNameModal} animationType="fade" transparent>
-        <KeyboardAvoidingView
-          style={styles.nameModalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.nameModalCard}>
-            <Image source={require('../../assets/Add Machine Asset.png')} style={styles.nameModalImage} resizeMode="contain" />
-            <Text style={styles.nameModalTitle}>Name Your Machine</Text>
-            <Text style={styles.nameModalId}>Machine ID: {machineId}</Text>
-
-            <Text style={styles.nameModalLabel}>Machine Name</Text>
-            <TextInput
-              style={styles.nameModalInput}
-              value={machineName}
-              onChangeText={setMachineName}
-              autoFocus
-            />
-
-            <TouchableOpacity
-              style={[styles.nameModalAddBtn, loading && styles.nameModalAddBtnDisabled]}
-              onPress={() => {
-                setShowNameModal(false);
-                handleAddMachine();
-              }}
-              activeOpacity={0.85}
-              disabled={loading}
-            >
-              <Text style={styles.nameModalAddBtnText}>{loading ? 'Adding...' : 'Add Machine'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => {
-                setShowNameModal(false);
-                setMachineId('');
-                setMachineName('');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Machine Name Modal removed */}
     </SafeAreaView>
   );
 }
@@ -480,37 +365,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  /* Scanner */
-  scannerContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  camera: {
-    flex: 1,
-  },
-  scannerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scannerFrame: {
-    width: 250,
-    height: 250,
-    borderWidth: 3,
-    borderColor: colors.primary,
-    borderRadius: 20,
-  },
-  scannerHint: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 20,
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
+  // ...existing code...
   closeButton: {
     position: 'absolute',
     right: 20,

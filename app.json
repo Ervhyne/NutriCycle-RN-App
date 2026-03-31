@@ -37,7 +37,7 @@
     "plugins": [
       "expo-video",
       "expo-audio",
-      "expo-barcode-scanner"
+      
     ],
     "extra": {
       "eas": {
